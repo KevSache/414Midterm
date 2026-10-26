@@ -202,18 +202,28 @@ print(con.execute("SELECT slug, title, best_bid, best_ask FROM pm.markets LIMIT 
 python examples/nba_analysis.py
 ```
 
-The run reads six hours before the listed tip through three hours after it. A busy hour is tens or hundreds of megabytes, and one full pass is on the order of a few gigabytes. CloudFront logs each file and the bytes sent under the shared class login. The charts are written on your machine only; they are not stored in this repo. Output files:
+The run reads six hours before the listed tip through three hours after it. A busy hour is tens or hundreds of megabytes, and one full pass is on the order of a few gigabytes. CloudFront logs each file and the bytes sent under the shared class login. The spread, alternate spreads, and game total are filtered out of those same hours, so they do not add another download. Final scores are a few small requests to ESPN's public scoreboard. The charts are written on your machine only; they are not stored in this repo. Output files:
 
 | File | What it shows |
 | --- | --- |
 | `price_paths.png` | Five-minute mid price of that team's win token. The vertical line is the listed tip. |
-| `variance.png` | Standard deviation of those mids in the six hours before tip, and in the first 2.5 hours after tip. |
+| `variance.png` | One number for the six hours before tip, and one for the first 2.5 hours after tip. |
+| `variance_score.png` | A variance score on every five-minute bin: the standard deviation of the mid over the trailing 30 minutes. |
+| `variance_vs_margin.png` | That in-game score against the absolute final margin from ESPN. Close games are margins of 5 or fewer. Blowouts are 15 or more. |
+| `price_vs_score.png` | The win price with the ESPN score margin on the same clock. Positive margin means the charted team is ahead. |
+| `market_paths.png` | Win price, the highest-volume spread, and the Over on the highest-volume game total. |
+| `alternate_spreads.png` | Pregame price of the four most traded spreads, using the point line from that team's side. |
+| `bid_ask_width.png` | Ask minus bid, every five minutes. |
 | `calibration.png` | Last mid before tip against the Polymarket resolution (won or lost). |
-| `moneyline_vs_spread.png` | That same pregame win price against the highest-volume full-game spread that names the team. |
-| `summary.csv` | One row per team, including games that had no order book. |
-| `price_paths.csv` | The points behind `price_paths.png`. |
+| `moneyline_vs_spread.png` | That same pregame win price against the highest-volume spread. |
+| `summary.csv` | One row per team, including the variance scores, the ESPN margin, and the game total. |
+| `price_paths.csv` | The five-minute rows behind the charts, including the variance score and the score margin. |
+| `game_results.csv` | ESPN score, quarter lines, and margin for each team that had an order book. |
+| `alternate_spreads.csv` | Pregame price of each alternate spread. |
 
-The database does not store the final point margin. The result column is the resolution only. `markets.best_bid` is the latest snapshot, not the history, so the charts come from the Parquet files. Some game-winner markets have volume in Postgres and still have zero Parquet rows; those teams stay blank on the charts.
+The variance score is high while the win price is moving around, and it falls once the price sits still near 0 or 1. A blowout that runs the price from a coin flip to 0.95 in one smooth stretch still produces a high score during that run. A close game that keeps crossing back and forth stays high for longer. `variance_score_early` and `variance_score_late` in `summary.csv` split the first 2.5 hours after tip into two halves, which is the check for whether the score rises as the game goes on. `minutes_to_decided` is how many minutes after tip the win price first reaches 0.90 or 0.10.
+
+The class database does not store the point margin. `won` is the Polymarket resolution, and the score, quarter lines, and margin come from ESPN. `markets.best_bid` is the latest snapshot, not the history, so the price charts come from the Parquet files. Some game-winner markets have volume in Postgres and still have zero Parquet rows; those teams stay blank on the charts.
 
 ## Update your local copy
 

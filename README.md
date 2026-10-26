@@ -192,6 +192,28 @@ print(con.execute("SELECT slug, title, best_bid, best_ask FROM pm.markets LIMIT 
 | `examples/supabase_psycopg2.py` | `markets` sample via psycopg2 |
 | `examples/supabase_pandas.py` | Same sample via pandas |
 | `examples/supabase_duckdb.py` | Same sample via DuckDB `ATTACH` |
+| `examples/nba_analysis.py` | Price path, variance, resolution, and spread charts for the top 10 NBA.com power-ranked teams |
+
+## NBA top 10
+
+`examples/nba_analysis.py` uses the NBA.com Week 2 power rankings published October 26, 2026. For each of those ten teams it picks one completed game-winner market (slug equals the event slug, so the two outcomes are the two teams) that actually has rows in the hourly Parquet files. A game already used for the opponent is reused, so both teams get a line.
+
+```bash
+python examples/nba_analysis.py
+```
+
+The run reads six hours before the listed tip through three hours after it. A busy hour is tens or hundreds of megabytes, and one full pass is on the order of a few gigabytes. CloudFront logs each file and the bytes sent under the shared class login. The charts are written on your machine only; they are not stored in this repo. Output files:
+
+| File | What it shows |
+| --- | --- |
+| `price_paths.png` | Five-minute mid price of that team's win token. The vertical line is the listed tip. |
+| `variance.png` | Standard deviation of those mids in the six hours before tip, and in the first 2.5 hours after tip. |
+| `calibration.png` | Last mid before tip against the Polymarket resolution (won or lost). |
+| `moneyline_vs_spread.png` | That same pregame win price against the highest-volume full-game spread that names the team. |
+| `summary.csv` | One row per team, including games that had no order book. |
+| `price_paths.csv` | The points behind `price_paths.png`. |
+
+The database does not store the final point margin. The result column is the resolution only. `markets.best_bid` is the latest snapshot, not the history, so the charts come from the Parquet files. Some game-winner markets have volume in Postgres and still have zero Parquet rows; those teams stay blank on the charts.
 
 ## Update your local copy
 
@@ -202,4 +224,9 @@ cd /mnt/c/Users/kevin/repositories/Polymarket_414
 git pull
 ```
 
-That brings over new files such as `DATA_DICTIONARY.md`. You do not need to reinstall the Python packages unless `requirements.txt` changed.
+That brings over new files such as `DATA_DICTIONARY.md`. Reinstall when `requirements.txt` changed (the NBA charts need `matplotlib`):
+
+```bash
+source .venv/bin/activate
+pip install -r requirements.txt
+```

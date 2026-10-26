@@ -5,7 +5,7 @@ indexed, so each ranking scans the table. Expect about 10–20 seconds.
 
 Examples:
     python examples/explore.py
-    python examples/explore.py --stat volume_clob --limit 200
+    python examples/explore.py --stat volume_clob --stat updated_at --search "michigan senate" --limit 200
     python examples/explore.py --stat events --limit 50
     python examples/explore.py --stat liquidity --search "world cup"
     python examples/explore.py --stat spread --min-liquidity 5000
@@ -18,7 +18,9 @@ Examples:
 import argparse
 import csv
 import sys
+from datetime import datetime
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 import psycopg2
 
@@ -37,6 +39,7 @@ STATS = {
     "tight": "Tightest bid-ask spread among markets with at least 10,000 lifetime volume.",
     "events": "Events with the highest summed lifetime market volume.",
     "surprise": "Resolved markets whose last trade was on the losing side, highest volume first.",
+    "updated_at": "Most recently updated market records (updated_at), newest first.",
 }
 
 MARKET_METRIC = {
@@ -48,7 +51,10 @@ MARKET_METRIC = {
     "spread": "(m.best_ask - m.best_bid)",
     "tight": "(m.best_ask - m.best_bid)",
     "surprise": "m.volume_clob",
+    "updated_at": "m.updated_at",
 }
+
+PACIFIC = ZoneInfo("America/Los_Angeles")
 
 
 def connect():
@@ -59,7 +65,9 @@ def connect():
 
 def like_pattern(term):
     escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    return f"%{escaped}%"
+    # A space matches any gap, so "michigan senate" also finds michigan-senate slugs.
+    loose = "%".join(part for part in escaped.split() if part)
+    return f"%{loose}%"
 
 
 def as_float(value):
@@ -81,6 +89,14 @@ def fmt_price(value):
     if value is None:
         return ""
     return f"{float(value):.3f}"
+
+
+def fmt_date(value):
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        return value.astimezone(PACIFIC).strftime("%Y-%m-%d")
+    return str(value)[:10]
 
 
 def clip(text, width):
@@ -153,7 +169,8 @@ def market_query(stat, status):
         "OR m.event_slug ILIKE %(search)s ESCAPE '\\')"
     )
     where.append("(%(min_liquidity)s IS NULL OR m.liquidity_clob >= %(min_liquidity)s)")
-    resolved_yes = "r.resolved_yes" if "resolutions r" in join else "NULL::boolean"
+    if "resolutions r" not in join:
+        join = "LEFT JOIN resolutions r ON r.market_slug = m.slug"
     return f"""
         SELECT
             m.slug,
@@ -170,7 +187,9 @@ def market_query(stat, status):
             m.volume_clob,
             m.liquidity_clob,
             m.end_date,
-            {resolved_yes} AS resolved_yes,
+            m.updated_at,
+            r.resolved_at,
+            r.resolved_yes,
             {metric} AS metric_value
         FROM markets m
         {join}
@@ -240,26 +259,50 @@ def show_markets(stat, records, offset):
         "spread": "spread",
         "tight": "spread",
         "surprise": "CLOB volume",
+        "updated_at": "updated",
     }[stat]
     if stat == "surprise":
-        headers = ["#", label, "last", "won", "title", "slug"]
-        aligns = ["r", "r", "r", "l", "l", "l"]
+        headers = ["#", label, "updated", "settled", "last", "won", "title"]
+        aligns = ["r", "r", "l", "l", "r", "l", "l"]
+    elif stat == "updated_at":
+        headers = ["#", "updated", "settled", "CLOB volume", "bid", "ask", "title"]
+        aligns = ["r", "l", "l", "r", "r", "r", "l"]
     else:
-        headers = ["#", label, "bid", "ask", "title", "slug"]
-        aligns = ["r", "r", "r", "r", "l", "l"]
+        headers = ["#", label, "updated", "settled", "bid", "ask", "title"]
+        aligns = ["r", "r", "l", "l", "r", "r", "l"]
     rows = []
     for index, record in enumerate(records, start=offset + 1):
         value = record["metric_value"]
-        shown = fmt_price(value) if stat in ("spread", "tight") else fmt_number(value)
+        if stat in ("spread", "tight"):
+            shown = fmt_price(value)
+        elif stat == "updated_at":
+            shown = fmt_date(value)
+        else:
+            shown = fmt_number(value)
+        updated = fmt_date(record["updated_at"])
+        settled = fmt_date(record["resolved_at"])
         if stat == "surprise":
             rows.append(
                 [
                     index,
                     shown,
+                    updated,
+                    settled,
                     fmt_price(record["last_trade_price"]),
                     "yes" if record["resolved_yes"] else "no",
-                    clip(record["title"], 46),
-                    clip(record["slug"], 36),
+                    clip(record["title"], 42),
+                ]
+            )
+        elif stat == "updated_at":
+            rows.append(
+                [
+                    index,
+                    shown,
+                    settled,
+                    fmt_number(record["volume_clob"]),
+                    fmt_price(record["best_bid"]),
+                    fmt_price(record["best_ask"]),
+                    clip(record["title"], 42),
                 ]
             )
         else:
@@ -267,10 +310,11 @@ def show_markets(stat, records, offset):
                 [
                     index,
                     shown,
+                    updated,
+                    settled,
                     fmt_price(record["best_bid"]),
                     fmt_price(record["best_ask"]),
-                    clip(record["title"], 52),
-                    clip(record["slug"], 42),
+                    clip(record["title"], 42),
                 ]
             )
     print_table(headers, rows, aligns)
@@ -317,9 +361,9 @@ def parse_args(argv):
     )
     parser.add_argument(
         "--stat",
-        default="volume_24hr",
+        action="append",
         choices=sorted(STATS),
-        help="Which ranking to run. Default: volume_24hr.",
+        help="Ranking to print. Repeat the flag to print more than one. Default: volume_24hr.",
     )
     parser.add_argument("--limit", type=int, default=100, help="Rows to print. Default 100. Maximum 2000.")
     parser.add_argument("--offset", type=int, default=0, help="Skip this many ranked rows. Use it to page.")
@@ -342,6 +386,8 @@ def parse_args(argv):
         parser.error("--limit must be from 1 to 2000")
     if args.offset < 0:
         parser.error("--offset must be 0 or greater")
+    if not args.stat:
+        args.stat = ["volume_24hr"]
     return args
 
 
@@ -351,30 +397,36 @@ def main(argv):
         for name, description in STATS.items():
             print(f"{name:14} {description}")
         return 0
-    if args.stat == "surprise" and args.status == "unresolved":
+    if "surprise" in args.stat and args.status == "unresolved":
         print("Surprise rankings only include resolved markets.", file=sys.stderr)
         return 1
 
-    print(STATS[args.stat], flush=True)
-    records = fetch_rows(args.stat, args)
-    if not records:
-        print("No rows matched.")
-        return 0
-
-    if args.stat == "events":
-        show_events(records, args.offset)
-    else:
-        show_markets(args.stat, records, args.offset)
-
-    print()
-    print(f"{len(records)} rows. Offset {args.offset}.")
-    if len(records) == args.limit:
-        print(f"Next page: --offset {args.offset + args.limit}")
-
-    if args.csv:
-        exported = csv_records(args.stat, records, args.offset)
-        fieldnames = ["rank", "stat", *records[0].keys()]
-        write_csv(args.csv, fieldnames, exported)
+    for index, stat in enumerate(args.stat):
+        if index:
+            print()
+        print(STATS[stat], flush=True)
+        records = fetch_rows(stat, args)
+        if not records:
+            print("No rows matched.")
+            continue
+        if stat == "events":
+            show_events(records, args.offset)
+        else:
+            show_markets(stat, records, args.offset)
+        print()
+        print(f"{len(records)} rows. Offset {args.offset}.")
+        if len(records) == args.limit:
+            print(f"Next page: --offset {args.offset + args.limit}")
+        if args.csv and len(args.stat) == 1:
+            exported = csv_records(stat, records, args.offset)
+            fieldnames = ["rank", "stat", *records[0].keys()]
+            write_csv(args.csv, fieldnames, exported)
+        elif args.csv:
+            stem = args.csv.rsplit(".", 1)
+            path = f"{stem[0]}_{stat}.{stem[1]}" if len(stem) == 2 else f"{args.csv}_{stat}"
+            exported = csv_records(stat, records, args.offset)
+            fieldnames = ["rank", "stat", *records[0].keys()]
+            write_csv(path, fieldnames, exported)
     return 0
 
 

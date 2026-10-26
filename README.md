@@ -5,6 +5,8 @@ Sample code for the class Polymarket dataset. Two systems:
 - **CloudFront** serves hourly order-book Parquet files.
 - **Supabase Postgres** serves market metadata (events, markets, resolutions, wallet pseudonyms).
 
+Column names, types, and join keys are in [DATA_DICTIONARY.md](DATA_DICTIONARY.md).
+
 Access window: **October 14, 2026 6:00pm PDT** through **October 29, 2026 11:59pm PDT**.
 
 ## Credentials
@@ -186,3 +188,14 @@ print(con.execute("SELECT slug, title, best_bid, best_ask FROM pm.markets LIMIT 
 | `examples/supabase_psycopg2.py` | `markets` sample via psycopg2 |
 | `examples/supabase_pandas.py` | Same sample via pandas |
 | `examples/supabase_duckdb.py` | Same sample via DuckDB `ATTACH` |
+
+## Update your local copy
+
+After this repository changes, download those commits from the same folder in Ubuntu:
+
+```bash
+cd /mnt/c/Users/kevin/repositories/Polymarket_414
+git pull
+```
+
+That brings over new files such as `DATA_DICTIONARY.md`. You do not need to reinstall the Python packages unless `requirements.txt` changed.

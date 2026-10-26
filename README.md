@@ -24,6 +24,17 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Rank markets by 24-hour volume (100 rows). Other rankings are listed with `--list-stats`.
+
+```bash
+python examples/explore.py
+python examples/explore.py --stat volume_clob --limit 200
+python examples/explore.py --stat events --search "world cup"
+python examples/explore.py --list-stats
+```
+
+Each ranking scans about 1.5 million markets and usually takes 10–20 seconds. `--limit` can go up to 2000, and `--offset` pages through the list. `--csv results.csv` writes the full rows.
+
 Look at a small slice of both sources:
 
 ```bash
@@ -168,6 +179,7 @@ print(con.execute("SELECT slug, title, best_bid, best_ask FROM pm.markets LIMIT 
 
 | Script | What it does |
 | --- | --- |
+| `examples/explore.py` | Ranks up to 2,000 markets or events by volume, liquidity, spread, or resolutions that went against the last trade |
 | `examples/look.py` | Prints a few markets, events, resolutions, wallet pseudonyms, and Parquet rows |
 | `examples/cloudfront_requests.py` | Checks a Parquet object with `requests` and prints status, size, and the `PAR1` magic bytes |
 | `examples/cloudfront_duckdb.py` | Reads schema and 10 rows from one hour |

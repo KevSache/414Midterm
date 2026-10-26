@@ -11,12 +11,15 @@ Examples:
     python examples/explore.py --stat spread --min-liquidity 5000
     python examples/explore.py --stat tight --limit 30
     python examples/explore.py --stat surprise --limit 40
-    python examples/explore.py --stat volume_1wk --csv top_week.csv
+    python examples/explore.py --stat volume_24hr --updated-within 24h --limit 200
+    python examples/explore.py --stat volume_1wk --updated-within 7d --csv top_week.csv
+    python examples/explore.py --stat volume_clob --since 2026-10-01 --until 2026-10-08
     python examples/explore.py --list-stats
 """
 
 import argparse
 import csv
+import re
 import sys
 from datetime import datetime
 from decimal import Decimal
@@ -30,7 +33,7 @@ CONNECTION = (
 )
 
 STATS = {
-    "volume_24hr": "Highest volume in the last 24 hours (volume_24hr).",
+    "volume_24hr": "Highest stored 24-hour volume (volume_24hr). Use --updated-within 24h so only recently updated markets remain.",
     "volume_1wk": "Highest volume in the last week (volume_1wk).",
     "volume_1mo": "Highest volume in the last month (volume_1mo).",
     "volume_clob": "Highest lifetime CLOB volume (volume_clob).",
@@ -61,6 +64,32 @@ def connect():
     con = psycopg2.connect(CONNECTION)
     con.set_session(readonly=True, autocommit=True)
     return con
+
+
+def parse_window(text):
+    match = re.fullmatch(r"(\d+)\s*(h|hr|hrs|hour|hours|d|day|days|w|week|weeks)", text.strip().lower())
+    if not match:
+        raise argparse.ArgumentTypeError("use a window like 24h, 7d, or 2w")
+    count = int(match.group(1))
+    if count < 1:
+        raise argparse.ArgumentTypeError("window must be at least 1")
+    unit = match.group(2)
+    if unit.startswith("h"):
+        return f"{count} hours"
+    if unit.startswith("w"):
+        return f"{count} weeks"
+    return f"{count} days"
+
+
+def parse_user_time(text):
+    raw = text.strip()
+    for pattern in ("%Y-%m-%d", "%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M"):
+        try:
+            parsed = datetime.strptime(raw, pattern)
+            return parsed.replace(tzinfo=PACIFIC)
+        except ValueError:
+            continue
+    raise argparse.ArgumentTypeError("use 2026-10-24 or 2026-10-24T15:00, Pacific time")
 
 
 def like_pattern(term):
@@ -169,6 +198,9 @@ def market_query(stat, status):
         "OR m.event_slug ILIKE %(search)s ESCAPE '\\')"
     )
     where.append("(%(min_liquidity)s IS NULL OR m.liquidity_clob >= %(min_liquidity)s)")
+    where.append("(%(updated_within)s IS NULL OR m.updated_at > now() - %(updated_within)s::interval)")
+    where.append("(%(updated_since)s IS NULL OR m.updated_at >= %(updated_since)s)")
+    where.append("(%(updated_until)s IS NULL OR m.updated_at < %(updated_until)s)")
     if "resolutions r" not in join:
         join = "LEFT JOIN resolutions r ON r.market_slug = m.slug"
     return f"""
@@ -217,9 +249,14 @@ def event_query(status):
         FROM markets m
         JOIN events e ON e.slug = m.event_slug
         LEFT JOIN resolutions r ON r.market_slug = m.slug
-        WHERE %(search)s IS NULL
-           OR e.title ILIKE %(search)s ESCAPE '\\'
-           OR e.slug ILIKE %(search)s ESCAPE '\\'
+        WHERE (
+            %(search)s IS NULL
+            OR e.title ILIKE %(search)s ESCAPE '\\'
+            OR e.slug ILIKE %(search)s ESCAPE '\\'
+        )
+          AND (%(updated_within)s IS NULL OR m.updated_at > now() - %(updated_within)s::interval)
+          AND (%(updated_since)s IS NULL OR m.updated_at >= %(updated_since)s)
+          AND (%(updated_until)s IS NULL OR m.updated_at < %(updated_until)s)
         GROUP BY e.slug, e.title
         HAVING {" AND ".join(having)}
         ORDER BY sum(m.volume_clob) DESC NULLS LAST, e.slug
@@ -234,6 +271,9 @@ def fetch_rows(stat, args):
         "min_liquidity": args.min_liquidity,
         "limit": args.limit,
         "offset": args.offset,
+        "updated_within": args.updated_within,
+        "updated_since": args.since,
+        "updated_until": args.until,
     }
     sql = event_query(args.status) if stat == "events" else market_query(stat, args.status)
     print("Scanning the markets table. This usually takes 10–20 seconds.", file=sys.stderr)
@@ -379,6 +419,21 @@ def parse_args(argv):
         type=float,
         help="Drop markets whose liquidity_clob is below this value.",
     )
+    parser.add_argument(
+        "--updated-within",
+        type=parse_window,
+        help="Keep markets whose record changed in this recent window, such as 24h, 7d, or 2w.",
+    )
+    parser.add_argument(
+        "--since",
+        type=parse_user_time,
+        help="Keep markets updated at or after this Pacific time. Example: 2026-10-24 or 2026-10-24T15:00.",
+    )
+    parser.add_argument(
+        "--until",
+        type=parse_user_time,
+        help="Keep markets updated before this Pacific time. Same format as --since.",
+    )
     parser.add_argument("--csv", help="Also write the full, untruncated rows to this CSV path.")
     parser.add_argument("--list-stats", action="store_true", help="Print the ranking choices and exit.")
     args = parser.parse_args(argv)
@@ -400,6 +455,20 @@ def main(argv):
     if "surprise" in args.stat and args.status == "unresolved":
         print("Surprise rankings only include resolved markets.", file=sys.stderr)
         return 1
+
+    if args.updated_within or args.since or args.until:
+        window = []
+        if args.updated_within:
+            window.append(f"updated in the last {args.updated_within}")
+        if args.since:
+            window.append(f"updated at or after {args.since.strftime('%Y-%m-%d %H:%M %Z')}")
+        if args.until:
+            window.append(f"updated before {args.until.strftime('%Y-%m-%d %H:%M %Z')}")
+        print("Keeping markets " + ", ".join(window) + ".", flush=True)
+        print(
+            "The volume figure is the value stored on the market at that update, not a new sum of trades.",
+            flush=True,
+        )
 
     for index, stat in enumerate(args.stat):
         if index:

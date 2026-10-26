@@ -30,12 +30,16 @@ Rank markets by 24-hour volume (100 rows). Other rankings are listed with `--lis
 
 ```bash
 python examples/explore.py
+python examples/explore.py --stat volume_24hr --updated-within 24h --limit 200 --csv largest_last_24h.csv
+python examples/explore.py --stat volume_clob --since 2026-10-01 --until 2026-10-08
 python examples/explore.py --stat volume_clob --stat updated_at --search "michigan senate" --limit 200
 python examples/explore.py --stat events --search "world cup"
 python examples/explore.py --list-stats
 ```
 
 Each ranking scans about 1.5 million markets and usually takes 10–20 seconds. Repeat `--stat` to print more than one ranking. `--limit` can go up to 2000, and `--offset` pages through the list. `--csv results.csv` writes the full rows. A repeated `--stat` writes one CSV per ranking. Dates in the table are Pacific time. A filled `settled` column means the market has a resolution.
+
+`--updated-within 24h` keeps markets whose record changed in that window, then ranks them. `--since` and `--until` do the same for a clock range, interpreted in Pacific time. `volume_24hr` is the stored 24-hour figure from that update. Old World Cup rows stay in an unfiltered `volume_24hr` ranking because their saved totals were never cleared.
 
 Look at a small slice of both sources:
 

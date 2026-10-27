@@ -1,0 +1,20 @@
+rank,team,stat,line,pregame_price,shown_price,title,volume_clob
+1,Gilgeous-Alexander 29.5 pts,points,29.5,0.55,0.55,Shai Gilgeous-Alexander: Points O/U 29.5,1680.8569289999996
+1,Gilgeous-Alexander 29.5 pts,points,30.5,0.495,0.495,Shai Gilgeous-Alexander: Points O/U 30.5,331.539273
+2,Brunson 25.5 pts,points,25.5,0.565,0.565,Jalen Brunson: Points O/U 25.5,237.32955499999997
+3,Wembanyama 27.5 pts,points,27.5,0.49,0.49,Victor Wembanyama: Points O/U 27.5,2690.0330389999995
+4,Castle 15.5 pts,points,15.5,0.565,0.565,Stephon Castle: Points O/U 15.5,230.375323
+5,Fox 13.5 pts,points,13.5,0.545,0.545,De'Aaron Fox: Points O/U 13.5,209.64102300000002
+6,Gilgeous-Alexander 7.5 ast,assists,7.5,0.51,0.51,Shai Gilgeous-Alexander: Assists O/U 7.5,555.5000150000001
+7,Irving 3.5 ast,assists,3.5,0.01,0.01,Kyrie Irving: Assists O/U 3.5,13492.622204000001
+7,Irving 3.5 ast,assists,5.5,,,Kyrie Irving: Assists O/U 5.5,
+7,Irving 3.5 ast,assists,1.5,,,Kyrie Irving: Assists O/U 1.5,
+7,Irving 3.5 ast,assists,7.5,,,Kyrie Irving: Assists O/U 7.5,
+8,Brunson 6.5 ast,assists,6.5,0.43,0.43,Jalen Brunson: Assists O/U 6.5,50.72727
+9,Brunson 5.5 ast,assists,5.5,0.55,0.55,Jalen Brunson: Assists O/U 5.5,37.017541
+9,Brunson 5.5 ast,assists,6.5,0.395,0.395,Jalen Brunson: Assists O/U 6.5,413.83218800000003
+10,Castle 4.5 reb,rebounds,4.5,0.625,0.625,Stephon Castle: Rebounds O/U 4.5,3823.4160229999998
+11,Fox 3.5 reb,rebounds,3.5,0.625,0.625,De'Aaron Fox: Rebounds O/U 3.5,824.2431909999999
+12,Wembanyama 11.5 reb,rebounds,11.5,0.445,0.445,Victor Wembanyama: Rebounds O/U 11.5,795.17051
+13,Gilgeous-Alexander 3.5 reb,rebounds,3.5,0.5700000000000001,0.5700000000000001,Shai Gilgeous-Alexander: Rebounds O/U 3.5,445.016773
+14,Brunson 2.5 reb,rebounds,2.5,0.56,0.56,Jalen Brunson: Rebounds O/U 2.5,260.591956

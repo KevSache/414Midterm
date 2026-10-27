@@ -795,7 +795,7 @@ def rank_props(props, activity, each, stats):
     print(f"{len(ranked)} prop lines appeared in the order book.", flush=True)
     ranked = balance_ranks(ranked, minimum=0)
     print(
-        f"{len(ranked)} of them have matched volume above zero.",
+        f"{len(ranked)} prop lines have both a book and matched volume above zero.",
         flush=True,
     )
     if ranked.empty:

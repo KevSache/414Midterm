@@ -34,6 +34,7 @@ The score margin is lined up with the price path on the clock.
     python examples/nba_analysis.py
 
 Graphs and a summary table are written to outputs/nba/.
+DATA_DICTIONARY.md in that folder defines every CSV column.
 
 A full run downloads whole hourly files from the class CloudFront host, on
 the order of a few gigabytes. That host logs each file and the bytes sent.
@@ -1587,18 +1588,198 @@ def analyze_props(each, stats):
     ])
 
 
+def column_meaning(filename, column, kind):
+    """Plain-language meaning of one output column. Game and prop runs differ."""
+    specific = PROP_COLUMN_DOCS if kind == "prop" else GAME_COLUMN_DOCS
+    for key in ((filename, column), ("summary.csv", column) if filename == "game_results.csv" else None, ("*", column)):
+        if key is None:
+            continue
+        if key in specific:
+            return specific[key]
+        if key in SHARED_COLUMN_DOCS:
+            return SHARED_COLUMN_DOCS[key]
+    return "Saved with this run."
+
+
+FILE_INTRO = {
+    "summary.csv": "One row per panel.",
+    "price_paths.csv": "One row per five-minute bin of the token drawn on the panel.",
+    "alternate_spreads.csv": "One row per extra line read from the same hours.",
+    "game_results.csv": "The summary rows for panels that had an order book. The columns match summary.csv.",
+    "large_orders.csv": "One row per unusually large posted size on the charted token. There is no wallet.",
+}
+
+
+SHARED_COLUMN_DOCS = {
+    ("*", "rank"): "Panel number, starting at 1. The same number joins a row to the other CSVs.",
+    ("*", "team"): "Name printed on the panel.",
+    ("*", "label"): "Title drawn on the panel.",
+    ("*", "code"): "Three-letter team code from the slug.",
+    ("*", "record"): "Win-loss record from the Week 2 power ranking. Blank for a volume selection.",
+    ("*", "game"): "Market slug of the charted contract.",
+    ("*", "opponent"): "The other team.",
+    ("*", "opponent_code"): "Three-letter code of the other team.",
+    ("*", "tip_utc"): "Listed tip, taken from markets.end_date. Stored in UTC.",
+    ("*", "pregame_std"): "Standard deviation of the 5-minute mid over the 6 hours before tip. Blank when fewer than 3 bins exist.",
+    ("*", "in_game_std"): "Standard deviation of the 5-minute mid over the first 2.5 hours after tip. Blank when fewer than 3 bins exist.",
+    ("*", "pregame_n"): "How many 5-minute bins fall in the 6 hours before tip.",
+    ("*", "in_game_n"): "How many 5-minute bins fall in the first 2.5 hours after tip.",
+    ("*", "pregame_price"): "Last mid before the listed tip.",
+    ("*", "variance_score_pregame"): "Mean of the five-minute variance score over the 6 hours before tip.",
+    ("*", "variance_score_early"): "Mean variance score from tip until 1.25 hours after tip.",
+    ("*", "variance_score_late"): "Mean variance score from 1.25 hours after tip until 2.5 hours after tip.",
+    ("*", "variance_score_live"): "Mean variance score over the first 2.5 hours after tip.",
+    ("*", "minutes_to_decided"): "Minutes after tip when the mid first reaches 0.90 or 0.10. Blank if that never happens in the saved window.",
+    ("*", "bid_ask_pregame"): "Mean of ask minus bid over the hour before tip.",
+    ("*", "bid_ask_live"): "Mean of ask minus bid over the first 2.5 hours after tip.",
+    ("*", "large_n"): "Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed.",
+    ("*", "followed_n"): "How many of those large sizes were followed by a mid move of at least 0.03 in the same direction over the next 30 minutes. A buy has to move the mid up. A sell has to move it down.",
+    ("*", "led_score_n"): "How many large sizes both followed the price and arrived at least 15 seconds after the previous event and within 2 minutes before the next one.",
+    ("*", "volume_clob"): "Stored lifetime CLOB volume of this contract. It is a snapshot from the markets table, not a sum over the game.",
+    ("*", "score_source"): "ESPN event id, written as espn:<id>.",
+    ("*", "note"): "Why a row has no price path or no ESPN result. Blank when both were found.",
+    ("*", "bin"): "Start of the 5-minute window, in UTC.",
+    ("*", "market"): "Condition id of the charted contract. This joins to markets.condition_id and to the Parquet market column.",
+    ("*", "asset_id"): "Token id of the charted outcome.",
+    ("*", "best_bid"): "Highest buy price with size still posted in that 5-minute window.",
+    ("*", "best_ask"): "Lowest sell price with size still posted in that 5-minute window.",
+    ("*", "mid"): "Average of best bid and best ask. When only one side is present, that side's price.",
+    ("*", "hours_from_tip"): "Hours after the listed tip. Negative values are before tip.",
+    ("*", "variance_score"): "Standard deviation of the mid over the trailing 30 minutes, which is 6 bins. Blank until 3 bins exist.",
+    ("*", "spread_width"): "Best ask minus best bid in that bin.",
+    ("*", "bucket"): "close, competitive, or blowout. The cutoffs are the same as game_bucket.",
+    ("*", "title"): "Market title from the markets table.",
+    ("*", "time"): "UTC time of the book update.",
+    ("*", "side"): "BUY is a posted bid. SELL is a posted ask. This is a resting size, not a matched trade, and it has no wallet.",
+    ("*", "price"): "Price of that posted size, on the 0 to 1 contract scale.",
+    ("*", "size"): "Posted size. A size of 0 means the level was removed, and those rows are left out because a cancel and a fill look the same.",
+    ("*", "med_size"): "Median posted size on this token and side in that clock hour.",
+    ("*", "size_ratio"): "size divided by med_size. A row is kept when this is at least 10 and that side had at least 20 updates in the hour.",
+    ("*", "mid_at"): "Latest 5-minute mid at or before this update.",
+    ("*", "mid_later"): "Next 5-minute mid at least 30 minutes after this update.",
+    ("*", "price_followed"): "True when mid_later is at least 0.03 further in the order's direction than mid_at.",
+    ("*", "stands_out"): "True when price_followed and led_score are both true. These are the dark marks on large_orders.png.",
+}
+
+
+GAME_COLUMN_DOCS = {
+    ("summary.csv", "won"): "True when the charted team won on Polymarket. resolutions.resolved_yes is true when the first outcome won, and the away team is that first outcome. Blank when the market has no resolution row.",
+    ("summary.csv", "spread"): "Title of the highest-volume full-game spread in this event.",
+    ("summary.csv", "spread_line"): "Point number of that spread from the charted team's side. Negative means that team is laying the points.",
+    ("summary.csv", "spread_pregame"): "Last mid before tip on the charted team's side of that spread.",
+    ("summary.csv", "espn_team_score"): "Charted team's final score from ESPN.",
+    ("summary.csv", "espn_opponent_score"): "Opponent's final score from ESPN.",
+    ("summary.csv", "espn_margin"): "Charted team's score minus the opponent's score.",
+    ("summary.csv", "game_bucket"): "close when the absolute margin is 5 or less, blowout when it is 15 or more, otherwise competitive. Blank when ESPN has no score.",
+    ("summary.csv", "quarters"): "Quarter scores with the charted team first, such as Q1:28-25.",
+    ("summary.csv", "final_points"): "Both teams' final scores added together.",
+    ("summary.csv", "total_line"): "Posted number on the highest-volume full-game total.",
+    ("summary.csv", "total_pregame"): "Last mid before tip of the Over on that total.",
+    ("summary.csv", "total_hit"): "True when final_points is above total_line.",
+    ("price_paths.csv", "score_margin"): "Charted team's score minus the opponent's score, using the latest ESPN play at or before this bin. Blank before tip.",
+    ("price_paths.csv", "team_score"): "Charted team's score at this bin.",
+    ("price_paths.csv", "opponent_score"): "Opponent's score at this bin.",
+    ("price_paths.csv", "spread_mid"): "Mid of the highest-volume spread in this bin, from the charted team's side.",
+    ("price_paths.csv", "total_mid"): "Mid of the Over on the highest-volume game total in this bin.",
+    ("alternate_spreads.csv", "line"): "Spread number from the charted team's side. Negative means that team is laying the points.",
+    ("alternate_spreads.csv", "pregame_price"): "Last mid before tip on that team's side of this spread.",
+    ("large_orders.csv", "led_score"): "True when the previous scoring play was at least 15 seconds earlier, or there was no earlier scoring play, and the next scoring play came within 2 minutes.",
+}
+
+
+PROP_COLUMN_DOCS = {
+    ("*", "team"): "Short panel label, such as Brunson 24.5 pts.",
+    ("*", "code"): "Stat family: points, assists, rebounds, threes, steals, or blocks.",
+    ("*", "record"): "Blank for a prop run.",
+    ("*", "opponent"): "Matchup from the slug, written as the away team at the home team.",
+    ("summary.csv", "player"): "Player name from the market title.",
+    ("summary.csv", "stat"): "Same stat family as code.",
+    ("summary.csv", "line"): "Posted over/under number. The charted price is Yes, which is the Over.",
+    ("summary.csv", "won"): "True when Yes won. Yes is the Over. This is the Polymarket resolution when resolutions has a row. When it does not, true means the ESPN box score is above the line. Blank when neither source settles it, including an exact push.",
+    ("summary.csv", "final_stat"): "ESPN box-score total for this stat. Threes are made three-pointers.",
+    ("summary.csv", "espn_margin"): "final_stat minus the posted number. Positive means the player finished over.",
+    ("summary.csv", "game_bucket"): "For points, close means the absolute gap is 2 or less and blowout means 6 or more. For assists, rebounds, threes, steals, and blocks, close is 1 or less and blowout is 3 or more.",
+    ("price_paths.csv", "stat_value"): "Player's running stat from the ESPN play-by-play. After tip it stays 0 until the first recorded increase. Blank before tip.",
+    ("price_paths.csv", "prop_line"): "Posted over/under number, repeated on every bin. Drawn as the dashed line.",
+    ("price_paths.csv", "spread_mid"): "Mid of the next most traded line for the same player, stat, and game.",
+    ("alternate_spreads.csv", "stat"): "Stat family of this line.",
+    ("alternate_spreads.csv", "line"): "Posted over/under number.",
+    ("alternate_spreads.csv", "pregame_price"): "Last Yes (Over) mid before tip on this line.",
+    ("large_orders.csv", "led_score"): "True when the player's previous stat increase was at least 15 seconds earlier, or there was none, and the next increase came within 2 minutes.",
+}
+
+
+def write_data_dictionary(files):
+    """Write DATA_DICTIONARY.md beside the CSVs. files is (name, columns) in write order."""
+    kind_line = (
+        "These CSVs are a player over/under run. The charted price is Yes, which is the Over."
+        if CHART_KIND == "prop"
+        else "These CSVs are a game-winner run. The charted price is the team named on the panel."
+    )
+    lines = [
+        "# Output data dictionary",
+        "",
+        kind_line,
+        "A blank cell means that value was missing.",
+        "Tip is the listed start in markets.end_date, not the final buzzer.",
+        "",
+    ]
+    present = {name for name, _columns in files}
+    for name, columns in files:
+        lines.append(f"## `{name}`")
+        lines.append("")
+        lines.append(FILE_INTRO.get(name, "Rows written by this run."))
+        lines.append("")
+        if not columns:
+            lines.append("This file was written with no columns because this run had no rows.")
+            lines.append("")
+            continue
+        lines.append("| Column | Meaning |")
+        lines.append("| --- | --- |")
+        for column in columns:
+            meaning = column_meaning(name, column, CHART_KIND).replace("|", "/")
+            lines.append(f"| `{column}` | {meaning} |")
+        lines.append("")
+    missing = []
+    if "price_paths.csv" not in present:
+        missing.append("`price_paths.csv` is absent because no panel had a price path.")
+    if "alternate_spreads.csv" not in present:
+        missing.append("`alternate_spreads.csv` is absent because no extra line was found.")
+    if "large_orders.csv" not in present:
+        missing.append("`large_orders.csv` is absent because no posted size was at least 10 times the median.")
+    if missing:
+        lines.append("## Files not written")
+        lines.append("")
+        lines.extend(missing)
+        lines.append("")
+    path = OUTPUT / "DATA_DICTIONARY.md"
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return path
+
+
 def finish_run(summaries, paths, alternates, results, order_frames, columns):
     summary_frame = pd.DataFrame(summaries)
     alternate_frame = pd.DataFrame(alternates)
+    result_frame = pd.DataFrame(results)
+    orders = pd.concat(order_frames, ignore_index=True) if order_frames else pd.DataFrame()
+    path_frame = pd.concat(paths, ignore_index=True) if paths else pd.DataFrame()
     summary_frame.to_csv(OUTPUT / "summary.csv", index=False)
-    if paths:
-        pd.concat(paths, ignore_index=True).to_csv(OUTPUT / "price_paths.csv", index=False)
+    if not path_frame.empty:
+        path_frame.to_csv(OUTPUT / "price_paths.csv", index=False)
     if not alternate_frame.empty:
         alternate_frame.to_csv(OUTPUT / "alternate_spreads.csv", index=False)
-    pd.DataFrame(results).to_csv(OUTPUT / "game_results.csv", index=False)
-    orders = pd.concat(order_frames, ignore_index=True) if order_frames else pd.DataFrame()
+    result_frame.to_csv(OUTPUT / "game_results.csv", index=False)
     if not orders.empty:
         orders.to_csv(OUTPUT / "large_orders.csv", index=False)
+    documented = [("summary.csv", list(summary_frame.columns))]
+    if not path_frame.empty:
+        documented.append(("price_paths.csv", list(path_frame.columns)))
+    if not alternate_frame.empty:
+        documented.append(("alternate_spreads.csv", list(alternate_frame.columns)))
+    documented.append(("game_results.csv", list(result_frame.columns)))
+    if not orders.empty:
+        documented.append(("large_orders.csv", list(orders.columns)))
+    write_data_dictionary(documented)
     plot_paths(paths)
     plot_variance(summary_frame)
     plot_variance_paths(paths)
@@ -1662,6 +1843,17 @@ def redraw():
     orders = pd.read_csv(orders_path) if orders_path.exists() else pd.DataFrame()
     plot_large_orders(paths, orders)
     plot_large_order_counts(summary)
+    documented = []
+    for name in ("summary.csv", "price_paths.csv", "alternate_spreads.csv", "game_results.csv", "large_orders.csv"):
+        path = OUTPUT / name
+        if not path.exists():
+            continue
+        try:
+            header = list(pd.read_csv(path, nrows=0).columns)
+        except pd.errors.EmptyDataError:
+            header = []
+        documented.append((name, header))
+    write_data_dictionary(documented)
     print(f"Rewrote charts in {OUTPUT}")
 
 

@@ -78,11 +78,10 @@ MIN_VOLUME_CLOB = 1000
 MAX_PROP_EACH = 10
 DEFAULT_PROP_EACH = 4
 LARGE_SIZE_MULT = 10
-# One cent and ninety-nine cents draw on the 0 and 1 lines. A buy that cheap,
-# or a sell that close to a dollar, can be posted in any size. Those rows are
-# left out of the large-order search. Five cents is far enough that a kept
-# mark is visibly off the axis.
-EDGE_PRICE = 0.05
+# A large print counts only when it is this close to the mid in that
+# five-minute bin. A one-cent bid while the market is at 50 cents is not
+# sitting at the market, so it is not an outlier in the book that can trade.
+NEAR_MID = 0.10
 FOLLOW_MOVE = 0.03
 PROP_STATS = ("points", "assists", "rebounds", "threes", "steals", "blocks")
 STAT_SHORT = {
@@ -285,29 +284,25 @@ def read_hour(duck, moment, pairs):
     return frame
 
 
-def cash_backed_price(column="price"):
-    """SQL test for a price more than five cents from 0 or 1."""
-    return f"{column} > {EDGE_PRICE} AND {column} < {1 - EDGE_PRICE}"
+def drop_far_orders(frame):
+    """Keep posted sizes within NEAR_MID of the mid at that time.
 
-
-def drop_boundary_orders(frame):
-    """Remove posted sizes within five cents of 0 or 1.
-
-    A one-cent bid and a ninety-nine-cent ask sit on the chart axis and can
-    be huge without much money at risk. They are not the outliers.
+    The mid is the current market price. A huge size far from it is a resting
+    order away from the book that can trade, not a large order at the market.
     """
-    if frame is None or frame.empty or "price" not in frame.columns:
+    if frame is None or frame.empty or "price" not in frame.columns or "mid_at" not in frame.columns:
         return frame
     price = pd.to_numeric(frame["price"], errors="coerce")
-    return frame.loc[price.gt(EDGE_PRICE) & price.lt(1 - EDGE_PRICE)].copy()
+    mid = pd.to_numeric(frame["mid_at"], errors="coerce")
+    return frame.loc[(price - mid).abs().le(NEAR_MID)].copy()
 
 
 def read_hour_scan(duck, moment, pairs):
     """One read of an hourly file: five-minute quotes, plus unusually large sizes.
 
     A large size is at least 10 times the median size on that token and side,
-    among prices more than five cents from 0 or 1. Size 0 is a removed level, so those
-    rows are left out. The file is read once.
+    among prints within 10 cents of that bin's mid. Size 0 is a removed level,
+    so those rows are left out. The file is read once.
     """
     empty_bins = pd.DataFrame(columns=["market", "asset_id", "bin", "best_bid", "best_ask"])
     empty_large = pd.DataFrame(columns=["ts_ms", "market", "asset_id", "side", "price", "size", "med_size"])
@@ -334,20 +329,46 @@ def read_hour_scan(duck, moment, pairs):
             FROM hour_hits
             GROUP BY 1, 2, 3
         """).fetchall()
-        real = cash_backed_price("price")
         large_rows = duck.execute(f"""
-            WITH med AS (
-                SELECT market, asset_id, side, median(size) AS med_size
+            WITH bins AS (
+                SELECT market, asset_id,
+                       floor(ts_ms / 1000.0 / 300) * 300 AS bin_s,
+                       max(price) FILTER (WHERE side = 'BUY') AS best_bid,
+                       min(price) FILTER (WHERE side = 'SELL') AS best_ask
                 FROM hour_hits
-                WHERE focus = 1 AND {real}
+                GROUP BY 1, 2, 3
+            ),
+            mids AS (
+                SELECT market, asset_id, bin_s,
+                       CASE
+                           WHEN best_bid IS NOT NULL AND best_ask IS NOT NULL
+                               THEN (best_bid + best_ask) / 2
+                           ELSE coalesce(best_bid, best_ask)
+                       END AS mid
+                FROM bins
+            ),
+            near AS (
+                SELECT h.market, h.asset_id, h.side, h.ts_ms, h.price, h.size, h.focus
+                FROM hour_hits h
+                JOIN mids d
+                  ON h.market = d.market
+                 AND h.asset_id = d.asset_id
+                 AND floor(h.ts_ms / 1000.0 / 300) * 300 = d.bin_s
+                WHERE d.mid IS NOT NULL
+                  AND abs(h.price - d.mid) <= {NEAR_MID}
+            ),
+            med AS (
+                SELECT market, asset_id, side, median(size) AS med_size
+                FROM near
+                WHERE focus = 1
                 GROUP BY 1, 2, 3
                 HAVING count(*) >= 20
             )
-            SELECT h.ts_ms, h.market, h.asset_id, h.side, h.price, h.size, m.med_size
-            FROM hour_hits h
+            SELECT n.ts_ms, n.market, n.asset_id, n.side, n.price, n.size, m.med_size
+            FROM near n
             JOIN med m USING (market, asset_id, side)
-            WHERE h.focus = 1 AND {cash_backed_price("h.price")}
-              AND h.size >= m.med_size * {LARGE_SIZE_MULT}
+            WHERE n.focus = 1
+              AND n.size >= m.med_size * {LARGE_SIZE_MULT}
         """).fetchall()
     except Exception as error:
         print(f"  skip {hour_key(moment)}: {error.__class__.__name__}", flush=True)
@@ -1376,10 +1397,7 @@ def classify_orders(orders, path, plays, tip):
     ]
     if orders is None or orders.empty:
         return pd.DataFrame(columns=columns)
-    frame = drop_boundary_orders(orders)
-    if frame.empty:
-        return pd.DataFrame(columns=columns)
-    frame = frame.copy()
+    frame = orders.copy()
     frame["time"] = pd.to_datetime(frame["ts_ms"], unit="ms", utc=True)
     frame = dedupe_orders(frame).sort_values("time").reset_index(drop=True)
     frame["hours_from_tip"] = (frame["time"] - pd.Timestamp(tip)) / pd.Timedelta(hours=1)
@@ -1429,6 +1447,9 @@ def classify_orders(orders, path, plays, tip):
         not_reaction = since_s.isna() | (since_s >= 15)
         frame["led_score"] = (not_reaction & until_s.notna() & (until_s <= 120)).fillna(False)
     frame["stands_out"] = frame["price_followed"] & frame["led_score"]
+    frame = drop_far_orders(frame)
+    if frame.empty:
+        return pd.DataFrame(columns=columns)
     return frame[columns]
 
 
@@ -1934,7 +1955,7 @@ SHARED_COLUMN_DOCS = {
     ("*", "minutes_to_decided"): "Minutes after tip when the mid first reaches 0.90 or 0.10. Blank if that never happens in the saved window.",
     ("*", "bid_ask_pregame"): "Mean of ask minus bid over the hour before tip.",
     ("*", "bid_ask_live"): "Mean of ask minus bid over the first 2.5 hours after tip.",
-    ("*", "large_n"): "Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed. The median and this count both ignore a price of 5 cents or less, or 95 cents or more. One-cent and ninety-nine-cent orders sit on the 0 and 1 lines and are not counted.",
+    ("*", "large_n"): "Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed. The median and this count use only prints within 10 cents of the mid in that five-minute bin.",
     ("*", "followed_n"): "How many of those large sizes were followed by a mid move of at least 0.03 in the same direction over the next 30 minutes. A buy has to move the mid up. A sell has to move it down.",
     ("*", "led_score_n"): "How many large sizes both followed the price and arrived at least 15 seconds after the previous event and within 2 minutes before the next one.",
     ("*", "book_size"): "Sum of posted size (size greater than 0) for the charted token in the hour before tip, the tip hour, and the hour after. Posted size is the offer traffic in the book. It is not matched trade volume.",
@@ -1956,10 +1977,10 @@ SHARED_COLUMN_DOCS = {
     ("*", "title"): "Market title from the markets table.",
     ("*", "time"): "UTC time of the book update.",
     ("*", "side"): "BUY is a posted bid. SELL is a posted ask. This is a resting size, not a matched trade, and it has no wallet.",
-    ("*", "price"): "Price of that posted size, on the 0 to 1 contract scale. Rows at 5 cents or less, or at 95 cents or more, are left out of large_orders.csv.",
+    ("*", "price"): "Price of that posted size, on the 0 to 1 contract scale. A row more than 10 cents from the mid at that time is left out of large_orders.csv.",
     ("*", "size"): "Posted size. A size of 0 means the level was removed, and those rows are left out because a cancel and a fill look the same.",
-    ("*", "med_size"): "Median posted size on this token and side in that clock hour, using prices more than five cents from 0 or 1.",
-    ("*", "size_ratio"): "size divided by med_size. A row is kept when this is at least 10 and that side had at least 20 updates in the hour.",
+    ("*", "med_size"): "Median posted size on this token and side in that clock hour, using only prints within 10 cents of the mid.",
+    ("*", "size_ratio"): "size divided by med_size. A row is kept when this is at least 10, the price is within 10 cents of the mid, and that side had at least 20 such updates in the hour.",
     ("*", "mid_at"): "Latest 5-minute mid at or before this update.",
     ("*", "mid_later"): "Next 5-minute mid at least 30 minutes after this update.",
     ("*", "price_followed"): "True when mid_later is at least 0.03 further in the order's direction than mid_at.",
@@ -2056,7 +2077,7 @@ def write_data_dictionary(files):
     if "alternate_spreads.csv" not in present:
         missing.append("`alternate_spreads.csv` is absent because no extra line was found.")
     if "large_orders.csv" not in present:
-        missing.append("`large_orders.csv` is absent because no posted size more than five cents from 0 or 1 was at least 10 times the median.")
+        missing.append("`large_orders.csv` is absent because no posted size within 10 cents of the mid was at least 10 times the median.")
     if missing:
         lines.append("## Files not written")
         lines.append("")
@@ -2509,7 +2530,7 @@ def flag_true(series):
 
 
 def counts_without_boundary(summary, orders):
-    """Bar-chart counts after prices within five cents of 0 or 1 are removed.
+    """Bar-chart counts after prints more than 10 cents from the mid are removed.
 
     A saved summary still has the old totals. The order rows are enough to
     recount, so a redraw matches the scatter without reading the hourly files.
@@ -2518,7 +2539,7 @@ def counts_without_boundary(summary, orders):
         return summary
     if "rank" not in orders.columns or "rank" not in summary.columns:
         return summary
-    frame = drop_boundary_orders(orders)
+    frame = drop_far_orders(orders)
     summary = summary.copy()
     summary["rank"] = pd.to_numeric(summary["rank"], errors="coerce")
     summary["large_n"] = 0
@@ -2547,7 +2568,7 @@ def plot_large_orders(paths, orders):
     by_rank = paths_by_rank(paths)
     grouped = {}
     if orders is not None and not orders.empty:
-        orders = drop_boundary_orders(orders)
+        orders = drop_far_orders(orders)
         for column in ("hours_from_tip", "price", "size_ratio"):
             if column in orders:
                 orders[column] = pd.to_numeric(orders[column], errors="coerce")
@@ -2614,7 +2635,7 @@ def plot_large_order_counts(summary, orders=None):
     frame = frame[frame["large_n"] > 0]
     fig, axis = plt.subplots(figsize=(max(10, 0.55 * max(len(frame), 1)), 5))
     if frame.empty:
-        axis.text(0.5, 0.5, "No order more than 5 cents from 0 or 1 was at least 10 times the median size", ha="center")
+        axis.text(0.5, 0.5, "No order within 10 cents of the mid was at least 10 times the median size", ha="center")
     else:
         positions = list(range(len(frame)))
         width = 0.25

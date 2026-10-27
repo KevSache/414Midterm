@@ -192,16 +192,19 @@ print(con.execute("SELECT slug, title, best_bid, best_ask FROM pm.markets LIMIT 
 | `examples/supabase_psycopg2.py` | `markets` sample via psycopg2 |
 | `examples/supabase_pandas.py` | Same sample via pandas |
 | `examples/supabase_duckdb.py` | Same sample via DuckDB `ATTACH` |
-| `examples/nba_analysis.py` | Price path, variance, resolution, and spread charts for the top 10 NBA.com power-ranked teams |
+| `examples/nba_analysis.py` | Price path, variance, resolution, and spread charts. `--find power` uses the top 10 power rankings. `--find top20` uses the 20 highest-volume games that have order-book rows |
 
 ## NBA top 10
 
-`examples/nba_analysis.py` uses the NBA.com Week 2 power rankings published October 26, 2026. For each of those ten teams it picks one completed game-winner market (slug equals the event slug, so the two outcomes are the two teams) that actually has rows in the hourly Parquet files. A game already used for the opponent is reused, so both teams get a line.
+`examples/nba_analysis.py` charts one completed game-winner market per panel. The slug equals the event slug, so the two outcomes are the two teams. `--find` chooses which games:
 
 ```bash
-python examples/nba_analysis.py
+python examples/nba_analysis.py --find power
+python examples/nba_analysis.py --find top20
 python examples/nba_analysis.py --plots-only
 ```
+
+`--find power` is the default. It uses the NBA.com Week 2 power rankings published October 26, 2026, one game per team. A game already used for the opponent is reused. `--find top20` sorts every completed NBA game-winner market by `volume_clob` and keeps the first 20 that actually have rows in the hourly files. Any `topN` from 1 to 40 works the same way. A large stored volume does not by itself mean the hourly file contains that game, so slugs with no order book are skipped and the next one is checked. The price on each panel is the away team, the first outcome. `top20` reads more hours than `power`, because it is up to 20 games instead of the games found for 10 teams.
 
 `--plots-only` redraws the charts from the CSVs already in `outputs/nba/`. It does not download the hourly files. Use it when a run finished the download and then failed while drawing.
 

@@ -1,13 +1,21 @@
-"""Price history for the top 10 NBA teams in the Week 2 power rankings.
+"""Price history for NBA game-winner markets.
 
-NBA.com's Week 2 power rankings, published October 26, 2026, are the ranking.
-Each team contributes one game-winner market: the market whose slug equals its
-event slug, so the two outcomes are the two teams. The hourly Parquet files
-supply the bid and ask path. The markets table only stores the latest quote.
+Two selections are built in select_games:
 
-The script keeps the highest-volume completed game that actually appears in
-those files. A game already confirmed for another team is reused, so both
-clubs in that game get a price path. From the same hourly files it also keeps
+    python examples/nba_analysis.py --find power
+    python examples/nba_analysis.py --find top20
+
+`power` is the NBA.com Week 2 power rankings from October 26, 2026, one
+completed game per team. `top20` (or any `topN`) sorts completed game-winner
+markets by volume_clob and keeps the first N that actually appear in the
+hourly order-book files. A large stored volume does not by itself mean those
+files contain the game, so empty slugs are skipped.
+
+Each kept market has a slug equal to its event slug, so the two outcomes are
+the two teams. The hourly Parquet files supply the bid and ask path. The
+markets table only stores the latest quote.
+
+From the same hourly files the script also keeps
 the main spread, the next most traded alternate spreads, and the main game
 total. It compares the price variance in the six hours before the listed tip
 with the variance in the two and a half hours after tip, and it writes a
@@ -53,6 +61,7 @@ HOURS_AFTER = 3
 IN_GAME_HOURS = 2.5
 VARIANCE_BINS = 6
 MAX_SPREADS = 4
+MAX_FIND = 40
 ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates={day}"
 ESPN_SUMMARY = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={event_id}"
 LINE_RE = re.compile(r"[-+]?\d+(?:\.\d+)?")
@@ -81,6 +90,8 @@ TOP_TEAMS = [
     {"rank": 9, "code": "tor", "name": "Raptors", "record": "2-1"},
     {"rank": 10, "code": "nyk", "name": "Knicks", "record": "0-3"},
 ]
+ACTIVE_PANELS = TOP_TEAMS
+CHART_SUBJECT = "NBA.com Week 2 power rankings"
 
 
 def connect_postgres():
@@ -250,8 +261,8 @@ def read_hour(duck, moment, pairs):
     return frame
 
 
-def has_book(duck, tip, condition_id, asset_id):
-    for hours_back in (0, 1, 3):
+def has_book(duck, tip, condition_id, asset_id, checks=(0, 1, 3)):
+    for hours_back in checks:
         probe = (tip - timedelta(hours=hours_back)).replace(minute=0, second=0, microsecond=0)
         frame = read_hour(duck, probe, [(condition_id, asset_id)])
         if not frame.empty:
@@ -275,6 +286,101 @@ def choose_game(duck, games, code, confirmed):
             confirmed.add(row["slug"])
             return row, asset_id, first
     return None, None, None
+
+
+def parse_find(text):
+    """Turn --find power or --find top20 into a selection kind and a count."""
+    value = (text or "power").strip().lower()
+    if value == "power":
+        return "power", len(TOP_TEAMS)
+    match = re.fullmatch(r"top(\d+)", value)
+    if match is None:
+        raise SystemExit("--find must be 'power' or 'topN', for example --find top20")
+    count = int(match.group(1))
+    if not 1 <= count <= MAX_FIND:
+        raise SystemExit(f"--find topN must be from 1 to {MAX_FIND}")
+    return "volume", count
+
+
+def pack_game(rank, name, code, record, row, asset_id, first, spreads, total):
+    return {
+        "rank": rank,
+        "name": name,
+        "code": code,
+        "record": record,
+        "game": row,
+        "asset_id": asset_id,
+        "first": first,
+        "spreads": spreads,
+        "total": total,
+    }
+
+
+def select_power(duck, games, side_markets):
+    """One completed game for each team in the Week 2 power rankings."""
+    selected = []
+    confirmed = set()
+    for team in TOP_TEAMS:
+        print(f"{team['rank']}. {team['name']}", flush=True)
+        candidates = team_games(games, team["code"])
+        row, asset_id, first = choose_game(duck, candidates, team["code"], confirmed)
+        if row is None:
+            selected.append({**team, "game": None, "spreads": [], "total": None})
+            print("  no order-book game", flush=True)
+            continue
+        spreads, total = side_markets_for(side_markets, row["slug"], team["name"])
+        selected.append(pack_game(team["rank"], team["name"], team["code"], team["record"], row, asset_id, first, spreads, total))
+        print(f"  using {row['slug']}", flush=True)
+    return selected
+
+
+def select_volume(duck, games, count, side_markets, probe=has_book):
+    """Highest volume_clob games whose hourly files contain the away-team token.
+
+    Games with no order-book rows are skipped, so a raw top-N by volume is not
+    enough. The walk stops at `count` hits or after three times that many probes.
+    """
+    ordered = games.copy()
+    ordered["volume_clob"] = ordered["volume_clob"].fillna(0)
+    ordered = ordered[ordered["volume_clob"] > 0].sort_values(["volume_clob", "tip"], ascending=[False, False])
+    probe_limit = min(len(ordered), max(count * 3, count))
+    print(
+        f"Walking volume_clob from the top. Keeping {count} games with order-book rows, "
+        f"probing at most {probe_limit}.",
+        flush=True,
+    )
+    selected = []
+    probes = 0
+    for _, row in ordered.iterrows():
+        if len(selected) >= count or probes >= probe_limit:
+            break
+        probes += 1
+        asset_id, first = token_for(row, row["away"])
+        print(f"  probe {row['slug']}  volume_clob={float(row['volume_clob']):,.0f}", flush=True)
+        if not probe(duck, row["tip"], row["condition_id"], asset_id, checks=(0, 1)):
+            print("  no order book", flush=True)
+            continue
+        name = str(list(row["outcomes"])[0])
+        spreads, total = side_markets_for(side_markets, row["slug"], name)
+        rank = len(selected) + 1
+        selected.append(pack_game(rank, name, row["away"], "", row, asset_id, first, spreads, total))
+        print(f"  kept {rank}/{count} {row['slug']}", flush=True)
+    if len(selected) < count:
+        print(f"Found {len(selected)} games with an order book after {probes} probes.", flush=True)
+    return selected
+
+
+def select_games(duck, games, side_markets, find_text):
+    """Choose the games for this run.
+
+    find_text is 'power' or 'topN'. Returns the selected rows and a short
+    chart subtitle.
+    """
+    kind, count = parse_find(find_text)
+    if kind == "power":
+        return select_power(duck, games, side_markets), "NBA.com Week 2 power rankings"
+    selected = select_volume(duck, games, count, side_markets)
+    return selected, f"top {len(selected)} by volume_clob with an order book"
 
 
 def mid_price(bid, ask):
@@ -485,7 +591,8 @@ def quote_path(book, market, tip):
     return add_path_features(series_from(rows, tip))
 
 
-def analyze():
+def analyze(find_text="power"):
+    global ACTIVE_PANELS, CHART_SUBJECT
     OUTPUT.mkdir(parents=True, exist_ok=True)
     pg = connect_postgres()
     games = load_games(pg)
@@ -493,28 +600,11 @@ def analyze():
     pg.close()
     duck = connect_duckdb()
 
-    selected = []
-    confirmed = set()
-    for team in TOP_TEAMS:
-        print(f"{team['rank']}. {team['name']}", flush=True)
-        candidates = team_games(games, team["code"])
-        row, asset_id, first = choose_game(duck, candidates, team["code"], confirmed)
-        if row is None:
-            selected.append({**team, "game": None})
-            print("  no order-book game", flush=True)
-            continue
-        spreads, total = side_markets_for(side_markets, row["slug"], team["name"])
-        selected.append(
-            {
-                **team,
-                "game": row,
-                "asset_id": asset_id,
-                "first": first,
-                "spreads": spreads,
-                "total": total,
-            }
-        )
-        print(f"  using {row['slug']}", flush=True)
+    selected, CHART_SUBJECT = select_games(duck, games, side_markets, find_text)
+    ACTIVE_PANELS = [
+        {"rank": item["rank"], "name": item["name"], "code": item["code"], "record": item.get("record") or ""}
+        for item in selected
+    ]
     duck.close()
     duck = connect_duckdb()
 
@@ -746,11 +836,24 @@ def analyze():
     print(f"Wrote {OUTPUT}")
 
 
+def panels_from_summary(summary):
+    panels = []
+    for _, row in summary.sort_values("rank").iterrows():
+        record = ""
+        if "record" in summary.columns and pd.notna(row["record"]):
+            record = str(row["record"])
+        panels.append({"rank": int(row["rank"]), "name": str(row["team"]), "record": record})
+    return panels
+
+
 def redraw():
+    global ACTIVE_PANELS, CHART_SUBJECT
     summary_path = OUTPUT / "summary.csv"
     if not summary_path.exists():
         raise SystemExit(f"No saved table at {summary_path}. Run the script once without --plots-only.")
     summary = pd.read_csv(summary_path)
+    ACTIVE_PANELS = panels_from_summary(summary)
+    CHART_SUBJECT = f"{len(ACTIVE_PANELS)} saved games"
     if "won" in summary:
         summary["won"] = summary["won"].map(
             lambda value: value if isinstance(value, bool) or pd.isna(value) else str(value).strip().lower() == "true"
@@ -777,36 +880,26 @@ def redraw():
 
 
 def plot_paths(paths):
-    fig, axes = plt.subplots(5, 2, figsize=(11, 14), sharex=True, sharey=True)
-    axes = axes.ravel()
+    fig, axes, count, cols = grid_for(sharey=True)
     by_rank = paths_by_rank(paths)
-    for axis, team in zip(axes, TOP_TEAMS):
-        frame = by_rank.get(team["rank"])
+    for axis, panel in zip(axes, ACTIVE_PANELS):
+        frame = by_rank.get(panel["rank"])
         if frame is None:
-            axis.text(0.5, 0.5, "No order-book path", ha="center", va="center")
+            draw_empty(axis, panel)
             axis.set_xlim(-HOURS_BEFORE, HOURS_AFTER)
             axis.set_ylim(0, 1)
-            title = f"{team['rank']}. {team['name']} ({team['record']})"
         else:
             axis.plot(frame["hours_from_tip"], frame["mid"], color="#1f4e79", linewidth=1.4)
             axis.axvline(0, color="#b0b0b0", linewidth=0.8)
             axis.set_ylim(0, 1)
-            title = f"{team['rank']}. {frame['label'].iloc[0]}"
-        axis.set_title(title, loc="left", fontsize=10)
+            axis.set_title(f"{panel['rank']}. {frame['label'].iloc[0]}", loc="left", fontsize=9)
         axis.grid(axis="y", color="#eeeeee")
-    for axis in axes[8:]:
-        axis.set_xlabel("Hours from listed tip")
-    for axis in axes[::2]:
-        axis.set_ylabel("Price of that team")
-    fig.suptitle("Win-market price around tip, top 10 NBA.com power rankings", fontsize=13)
-    fig.tight_layout()
-    fig.savefig(OUTPUT / "price_paths.png", dpi=140)
-    plt.close(fig)
+    finish_grid(fig, axes, count, cols, "Hours from listed tip", "Price of that team", f"Win price around tip, {CHART_SUBJECT}", "price_paths.png")
 
 
 def plot_variance(summary):
     frame = summary.dropna(subset=["pregame_std", "in_game_std"]).copy()
-    fig, axis = plt.subplots(figsize=(10, 5))
+    fig, axis = plt.subplots(figsize=(max(10, 0.55 * max(len(frame), 1)), 5))
     if frame.empty:
         axis.text(0.5, 0.5, "Not enough quotes to measure variance", ha="center")
     else:
@@ -848,14 +941,46 @@ def plot_calibration(summary):
     plt.close(fig)
 
 
-def facet_figure(sharey=False):
-    fig, axes = plt.subplots(5, 2, figsize=(11, 14), sharex=True, sharey=sharey)
-    return fig, axes.ravel()
+def panel_heading(panel):
+    record = panel.get("record") or ""
+    if record:
+        return f"{panel['rank']}. {panel['name']} ({record})"
+    return f"{panel['rank']}. {panel['name']}"
 
 
-def draw_empty(axis, team):
+def grid_for(sharey=False):
+    count = max(len(ACTIVE_PANELS), 1)
+    cols = 2 if count <= 10 else 4
+    rows = (count + cols - 1) // cols
+    fig, axes = plt.subplots(
+        rows,
+        cols,
+        figsize=(5.5 * cols, 2.55 * rows),
+        sharex=True,
+        sharey=sharey,
+        squeeze=False,
+    )
+    flat = list(axes.ravel())
+    for axis in flat[count:]:
+        axis.axis("off")
+    return fig, flat, count, cols
+
+
+def finish_grid(fig, axes, count, cols, xlabel, ylabel, title, filename):
+    for index in range(count):
+        if index + cols >= count:
+            axes[index].set_xlabel(xlabel)
+        if index % cols == 0:
+            axes[index].set_ylabel(ylabel)
+    fig.suptitle(title, fontsize=13)
+    fig.tight_layout()
+    fig.savefig(OUTPUT / filename, dpi=140)
+    plt.close(fig)
+
+
+def draw_empty(axis, panel):
     axis.text(0.5, 0.5, "No order-book path", ha="center", va="center", transform=axis.transAxes)
-    axis.set_title(f"{team['rank']}. {team['name']} ({team['record']})", loc="left", fontsize=10)
+    axis.set_title(panel_heading(panel), loc="left", fontsize=9)
 
 
 def paths_by_rank(paths):
@@ -882,25 +1007,18 @@ def paths_by_rank(paths):
 
 
 def plot_variance_paths(paths):
-    fig, axes = facet_figure(sharey=True)
+    fig, axes, count, cols = grid_for(sharey=True)
     by_rank = paths_by_rank(paths)
-    for axis, team in zip(axes, TOP_TEAMS):
-        frame = by_rank.get(team["rank"])
-        if frame is None or frame["variance_score"].dropna().empty:
-            draw_empty(axis, team)
+    for axis, panel in zip(axes, ACTIVE_PANELS):
+        frame = by_rank.get(panel["rank"])
+        if frame is None or "variance_score" not in frame or frame["variance_score"].dropna().empty:
+            draw_empty(axis, panel)
             continue
         axis.plot(frame["hours_from_tip"], frame["variance_score"], color="#6b3fa0", linewidth=1.4)
         axis.axvline(0, color="#b0b0b0", linewidth=0.8)
-        axis.set_title(f"{team['rank']}. {frame['label'].iloc[0]}", loc="left", fontsize=10)
+        axis.set_title(f"{panel['rank']}. {frame['label'].iloc[0]}", loc="left", fontsize=9)
         axis.grid(axis="y", color="#eeeeee")
-    for axis in axes[8:]:
-        axis.set_xlabel("Hours from listed tip")
-    for axis in axes[::2]:
-        axis.set_ylabel("Trailing 30-minute std")
-    fig.suptitle("Variance score every five minutes", fontsize=13)
-    fig.tight_layout()
-    fig.savefig(OUTPUT / "variance_score.png", dpi=140)
-    plt.close(fig)
+    finish_grid(fig, axes, count, cols, "Hours from listed tip", "Trailing 30-minute std", "Variance score every five minutes", "variance_score.png")
 
 
 def plot_variance_vs_margin(summary):
@@ -926,12 +1044,12 @@ def plot_variance_vs_margin(summary):
 
 
 def plot_price_vs_score(paths):
-    fig, axes = facet_figure()
+    fig, axes, count, cols = grid_for()
     by_rank = paths_by_rank(paths)
-    for axis, team in zip(axes, TOP_TEAMS):
-        frame = by_rank.get(team["rank"])
+    for index, (axis, panel) in enumerate(zip(axes, ACTIVE_PANELS)):
+        frame = by_rank.get(panel["rank"])
         if frame is None:
-            draw_empty(axis, team)
+            draw_empty(axis, panel)
             continue
         axis.plot(frame["hours_from_tip"], frame["mid"], color="#1f4e79", linewidth=1.4, label="Win price")
         axis.axvline(0, color="#b0b0b0", linewidth=0.8)
@@ -940,29 +1058,23 @@ def plot_price_vs_score(paths):
         if not scores.empty:
             twin = axis.twinx()
             twin.plot(frame["hours_from_tip"], frame["score_margin"], color="#b04a4a", linewidth=1.2, label="Score margin")
-            twin.set_ylabel("Margin" if team["rank"] % 2 == 0 else "")
+            if (index + 1) % cols == 0:
+                twin.set_ylabel("Margin")
             limit = max(15, float(scores.abs().max()) + 2)
             twin.set_ylim(-limit, limit)
-        axis.set_title(f"{team['rank']}. {frame['label'].iloc[0]}", loc="left", fontsize=10)
+        axis.set_title(f"{panel['rank']}. {frame['label'].iloc[0]}", loc="left", fontsize=9)
         axis.grid(axis="y", color="#eeeeee")
-    for axis in axes[8:]:
-        axis.set_xlabel("Hours from listed tip")
-    for axis in axes[::2]:
-        axis.set_ylabel("Win price")
-    fig.suptitle("Win price and ESPN score margin", fontsize=13)
-    fig.tight_layout()
-    fig.savefig(OUTPUT / "price_vs_score.png", dpi=140)
-    plt.close(fig)
+    finish_grid(fig, axes, count, cols, "Hours from listed tip", "Win price", "Win price and ESPN score margin", "price_vs_score.png")
 
 
 def plot_market_paths(paths):
-    fig, axes = facet_figure(sharey=True)
+    fig, axes, count, cols = grid_for(sharey=True)
     by_rank = paths_by_rank(paths)
     labeled = False
-    for axis, team in zip(axes, TOP_TEAMS):
-        frame = by_rank.get(team["rank"])
+    for axis, panel in zip(axes, ACTIVE_PANELS):
+        frame = by_rank.get(panel["rank"])
         if frame is None:
-            draw_empty(axis, team)
+            draw_empty(axis, panel)
             continue
         axis.plot(frame["hours_from_tip"], frame["mid"], color="#1f4e79", linewidth=1.4, label="Win")
         if "spread_mid" in frame and frame["spread_mid"].notna().any():
@@ -971,45 +1083,31 @@ def plot_market_paths(paths):
             axis.plot(frame["hours_from_tip"], frame["total_mid"], color="#2f7d4a", linewidth=1.2, label="Game total Over")
         axis.axvline(0, color="#b0b0b0", linewidth=0.8)
         axis.set_ylim(0, 1)
-        axis.set_title(f"{team['rank']}. {frame['label'].iloc[0]}", loc="left", fontsize=10)
+        axis.set_title(f"{panel['rank']}. {frame['label'].iloc[0]}", loc="left", fontsize=9)
         axis.grid(axis="y", color="#eeeeee")
         if not labeled:
             axis.legend(fontsize=8, loc="lower left")
             labeled = True
-    for axis in axes[8:]:
-        axis.set_xlabel("Hours from listed tip")
-    for axis in axes[::2]:
-        axis.set_ylabel("Price")
-    fig.suptitle("Win price, main spread, and game total", fontsize=13)
-    fig.tight_layout()
-    fig.savefig(OUTPUT / "market_paths.png", dpi=140)
-    plt.close(fig)
+    finish_grid(fig, axes, count, cols, "Hours from listed tip", "Price", "Win price, main spread, and game total", "market_paths.png")
 
 
 def plot_bid_ask(paths):
-    fig, axes = facet_figure(sharey=True)
+    fig, axes, count, cols = grid_for(sharey=True)
     by_rank = paths_by_rank(paths)
-    for axis, team in zip(axes, TOP_TEAMS):
-        frame = by_rank.get(team["rank"])
+    for axis, panel in zip(axes, ACTIVE_PANELS):
+        frame = by_rank.get(panel["rank"])
         if frame is None or "spread_width" not in frame or frame["spread_width"].dropna().empty:
-            draw_empty(axis, team)
+            draw_empty(axis, panel)
             continue
         axis.plot(frame["hours_from_tip"], frame["spread_width"], color="#1f4e79", linewidth=1.3)
         axis.axvline(0, color="#b0b0b0", linewidth=0.8)
-        axis.set_title(f"{team['rank']}. {frame['label'].iloc[0]}", loc="left", fontsize=10)
+        axis.set_title(f"{panel['rank']}. {frame['label'].iloc[0]}", loc="left", fontsize=9)
         axis.grid(axis="y", color="#eeeeee")
-    for axis in axes[8:]:
-        axis.set_xlabel("Hours from listed tip")
-    for axis in axes[::2]:
-        axis.set_ylabel("Ask minus bid")
-    fig.suptitle("Bid-ask gap every five minutes", fontsize=13)
-    fig.tight_layout()
-    fig.savefig(OUTPUT / "bid_ask_width.png", dpi=140)
-    plt.close(fig)
+    finish_grid(fig, axes, count, cols, "Hours from listed tip", "Ask minus bid", "Bid-ask gap every five minutes", "bid_ask_width.png")
 
 
 def plot_alternate_spreads(frame):
-    fig, axes = facet_figure()
+    fig, axes, count, cols = grid_for()
     if frame is None or frame.empty:
         grouped = {}
     else:
@@ -1017,26 +1115,18 @@ def plot_alternate_spreads(frame):
         frame["line"] = pd.to_numeric(frame["line"], errors="coerce")
         frame["pregame_price"] = pd.to_numeric(frame["pregame_price"], errors="coerce")
         grouped = {int(rank): part.dropna(subset=["line", "pregame_price"]) for rank, part in frame.groupby("rank")}
-    for axis, team in zip(axes, TOP_TEAMS):
-        part = grouped.get(team["rank"])
+    for axis, panel in zip(axes, ACTIVE_PANELS):
+        part = grouped.get(panel["rank"])
         if part is None or part.empty:
-            draw_empty(axis, team)
-            axis.set_title(f"{team['rank']}. {team['name']}", loc="left", fontsize=10)
+            draw_empty(axis, panel)
             continue
         part = part.sort_values("line")
         axis.plot(part["line"], part["pregame_price"], color="#1f4e79", marker="o")
         axis.set_ylim(0, 1)
         axis.axhline(0.5, color="#b0b0b0", linewidth=0.8)
-        axis.set_title(f"{team['rank']}. {team['name']}", loc="left", fontsize=10)
+        axis.set_title(panel_heading(panel), loc="left", fontsize=9)
         axis.grid(axis="y", color="#eeeeee")
-    for axis in axes[8:]:
-        axis.set_xlabel("Points, from that team's side")
-    for axis in axes[::2]:
-        axis.set_ylabel("Pregame cover price")
-    fig.suptitle("Alternate spreads before tip", fontsize=13)
-    fig.tight_layout()
-    fig.savefig(OUTPUT / "alternate_spreads.png", dpi=140)
-    plt.close(fig)
+    finish_grid(fig, axes, count, cols, "Points, from that team's side", "Pregame cover price", "Alternate spreads before tip", "alternate_spreads.png")
 
 
 def plot_spread(summary):
@@ -1064,6 +1154,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="NBA top-10 price paths from the class order-book files.")
     parser.add_argument(
+        "--find",
+        default="power",
+        help="Which games to chart: power, or topN (for example top20). topN keeps the N highest volume_clob games that have order-book rows.",
+    )
+    parser.add_argument(
         "--plots-only",
         action="store_true",
         help="Redraw the charts from outputs/nba CSVs. Does not download hourly files.",
@@ -1078,4 +1173,4 @@ if __name__ == "__main__":
             "Final scores are a few small requests to ESPN, not to that host.",
             flush=True,
         )
-        analyze()
+        analyze(args.find)

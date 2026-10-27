@@ -873,6 +873,33 @@ def last_before_tip(frame):
     return float(sample.iloc[-1]["mid"])
 
 
+def first_mid(frame):
+    """Earliest saved mid. Used when a book has no quote before tip."""
+    if frame is None or frame.empty or "mid" not in frame:
+        return None
+    sample = frame.dropna(subset=["mid"])
+    if sample.empty:
+        return None
+    return float(sample.iloc[0]["mid"])
+
+
+def shown_mid(frame):
+    """Pregame mid when the book was quoted before tip, otherwise the first saved mid."""
+    before = last_before_tip(frame)
+    if before is not None:
+        return before
+    return first_mid(frame)
+
+
+def chart_prices(summary):
+    """Price to plot: the pregame mid, or the first saved mid when that is blank."""
+    frame = summary.copy()
+    pregame = pd.to_numeric(frame["pregame_price"], errors="coerce") if "pregame_price" in frame else pd.Series(pd.NA, index=frame.index)
+    first = pd.to_numeric(frame["first_price"], errors="coerce") if "first_price" in frame else pd.Series(pd.NA, index=frame.index)
+    frame["chart_price"] = pregame.where(pregame.notna(), first)
+    return frame
+
+
 def add_path_features(frame):
     if frame.empty:
         frame = frame.copy()
@@ -1210,6 +1237,37 @@ def prop_bucket(stat, edge):
     return "competitive"
 
 
+def attach_game_clock(path, plays):
+    """Home score, away score, and their sum on each in-game bin.
+
+    A prop chart has no 'charted team', so the game total is what lines up
+    with the Over price when the player's own running stat is missing.
+    """
+    if path is None or path.empty or plays is None or plays.empty:
+        path = path.copy() if path is not None else pd.DataFrame()
+        path["home_score"] = pd.NA
+        path["away_score"] = pd.NA
+        path["game_points"] = pd.NA
+        return path
+    scores = plays.sort_values("wallclock")[["wallclock", "home_score", "away_score"]]
+    merged = pd.merge_asof(
+        path.sort_values("bin"),
+        scores,
+        left_on="bin",
+        right_on="wallclock",
+        direction="backward",
+    )
+    live = merged["hours_from_tip"] >= 0
+    merged.loc[~live, ["home_score", "away_score"]] = pd.NA
+    merged["game_points"] = pd.NA
+    both = live & merged["home_score"].notna() & merged["away_score"].notna()
+    merged.loc[both, "game_points"] = (
+        pd.to_numeric(merged.loc[both, "home_score"], errors="coerce")
+        + pd.to_numeric(merged.loc[both, "away_score"], errors="coerce")
+    )
+    return merged.drop(columns=["wallclock"], errors="ignore")
+
+
 def attach_stat(path, ticks, line):
     path = path.copy()
     path["stat_value"] = pd.NA
@@ -1485,6 +1543,7 @@ def analyze(find_text="top10"):
                 "pregame_n": pre_n,
                 "in_game_n": live_n,
                 "pregame_price": pregame,
+                "first_price": first_mid(path),
                 "won": won,
                 "spread": None if main_spread is None else main_spread["title"],
                 "spread_line": None if main_spread is None else main_spread["line"],
@@ -1618,6 +1677,7 @@ def analyze_props(each, stats):
         plays = None if result is None else result["plays"]
         ticks = stat_ticks(plays, item["player_slug"], item["stat"])
         path = attach_stat(path, ticks, item["line"])
+        path = attach_game_clock(path, plays)
         if not path.empty and not alt_path.empty:
             path = path.merge(
                 alt_path[["bin", "mid"]].rename(columns={"mid": "spread_mid"}),
@@ -1665,6 +1725,7 @@ def analyze_props(each, stats):
             "pregame_n": pre_n,
             "in_game_n": live_n,
             "pregame_price": last_before_tip(path),
+            "first_price": first_mid(path),
             "won": won,
             "variance_score_pregame": window_mean(path, "variance_score", -HOURS_BEFORE, 0),
             "variance_score_early": window_mean(path, "variance_score", 0, IN_GAME_HOURS / 2),
@@ -1704,6 +1765,7 @@ def analyze_props(each, stats):
                     "stat": item["stat"],
                     "line": market["line"],
                     "pregame_price": last_before_tip(series),
+                    "shown_price": shown_mid(series),
                     "title": market["title"],
                     "volume_clob": market["volume_clob"],
                 }
@@ -1714,6 +1776,7 @@ def analyze_props(each, stats):
             plot_path["rank"] = item["rank"]
             plot_path["label"] = label
             plot_path["bucket"] = summary["game_bucket"]
+            plot_path["final_stat"] = final
             paths.append(plot_path)
         if not large_book.empty:
             mine_orders = large_book[
@@ -1785,7 +1848,8 @@ SHARED_COLUMN_DOCS = {
     ("*", "in_game_std"): "Standard deviation of the 5-minute mid over the first 2.5 hours after tip. Blank when fewer than 3 bins exist.",
     ("*", "pregame_n"): "How many 5-minute bins fall in the 6 hours before tip.",
     ("*", "in_game_n"): "How many 5-minute bins fall in the first 2.5 hours after tip.",
-    ("*", "pregame_price"): "Last mid before the listed tip.",
+    ("*", "pregame_price"): "Last mid before the listed tip. Blank when the saved book starts after tip.",
+    ("*", "first_price"): "Earliest mid in the saved window. Charts use this when pregame_price is blank.",
     ("*", "variance_score_pregame"): "Mean of the five-minute variance score over the 6 hours before tip.",
     ("*", "variance_score_early"): "Mean variance score from tip until 1.25 hours after tip.",
     ("*", "variance_score_late"): "Mean variance score from 1.25 hours after tip until 2.5 hours after tip.",
@@ -1863,12 +1927,17 @@ PROP_COLUMN_DOCS = {
     ("summary.csv", "final_stat"): "ESPN box-score total for this stat. Threes are made three-pointers.",
     ("summary.csv", "espn_margin"): "final_stat minus the posted number. Positive means the player finished over.",
     ("summary.csv", "game_bucket"): "For points, close means the absolute gap is 2 or less and blowout means 6 or more. For assists, rebounds, threes, steals, and blocks, close is 1 or less and blowout is 3 or more.",
-    ("price_paths.csv", "stat_value"): "Player's running stat from the ESPN play-by-play. After tip it stays 0 until the first recorded increase. Blank before tip.",
+    ("price_paths.csv", "stat_value"): "Player's running stat from the ESPN play-by-play. After tip it stays 0 until the first recorded increase. Blank before tip, and blank for the whole game when the play text never names this player.",
     ("price_paths.csv", "prop_line"): "Posted over/under number, repeated on every bin. Drawn as the dashed line.",
+    ("price_paths.csv", "final_stat"): "ESPN box-score total, repeated on every bin. Drawn as the dotted line.",
+    ("price_paths.csv", "home_score"): "Home team's score at this bin. Blank before tip.",
+    ("price_paths.csv", "away_score"): "Away team's score at this bin. Blank before tip.",
+    ("price_paths.csv", "game_points"): "Home score plus away score. Drawn on price_vs_score.png when the player's running stat is missing.",
     ("price_paths.csv", "spread_mid"): "Mid of the next most traded line for the same player, stat, and game.",
     ("alternate_spreads.csv", "stat"): "Stat family of this line.",
     ("alternate_spreads.csv", "line"): "Posted over/under number.",
-    ("alternate_spreads.csv", "pregame_price"): "Last Yes (Over) mid before tip on this line.",
+    ("alternate_spreads.csv", "pregame_price"): "Last Yes (Over) mid before tip on this line. Blank when this line has no quote before tip.",
+    ("alternate_spreads.csv", "shown_price"): "The dot on alternate_spreads.png. Pregame mid when one exists, otherwise the first saved mid.",
     ("large_orders.csv", "led_score"): "True when the player's previous stat increase was at least 15 seconds earlier, or there was none, and the next increase came within 2 minutes.",
 }
 
@@ -2041,7 +2110,12 @@ def plot_paths(paths):
 
 
 def plot_variance(summary):
-    frame = summary.dropna(subset=["pregame_std", "in_game_std"]).copy()
+    frame = summary.copy()
+    for column in ("pregame_std", "in_game_std"):
+        if column not in frame:
+            frame[column] = pd.NA
+        frame[column] = pd.to_numeric(frame[column], errors="coerce")
+    frame = frame.dropna(subset=["pregame_std", "in_game_std"], how="all")
     fig, axis = plt.subplots(figsize=(max(10, 0.55 * max(len(frame), 1)), 5))
     if frame.empty:
         axis.text(0.5, 0.5, "Not enough quotes to measure variance", ha="center")
@@ -2061,24 +2135,24 @@ def plot_variance(summary):
 
 
 def plot_calibration(summary):
-    frame = summary.dropna(subset=["pregame_price", "won"]).copy()
+    frame = chart_prices(summary).dropna(subset=["chart_price", "won"]).copy()
     fig, axis = plt.subplots(figsize=(6.5, 6))
     axis.plot([0, 1], [0, 1], color="#b0b0b0", linewidth=1)
     if frame.empty:
-        axis.text(0.5, 0.5, "No resolved games with a pregame price", ha="center")
+        axis.text(0.5, 0.5, "No resolved market with a saved price", ha="center")
     else:
         wins = frame[frame["won"] == True]  # noqa: E712
         losses = frame[frame["won"] == False]  # noqa: E712
         yes_label = "Over hit" if CHART_KIND == "prop" else "Team won"
         no_label = "Over missed" if CHART_KIND == "prop" else "Team lost"
-        axis.scatter(wins["pregame_price"], [1] * len(wins), color="#1f4e79", label=yes_label, zorder=3)
-        axis.scatter(losses["pregame_price"], [0] * len(losses), color="#d9762c", label=no_label, zorder=3)
+        axis.scatter(wins["chart_price"], [1] * len(wins), color="#1f4e79", label=yes_label, zorder=3)
+        axis.scatter(losses["chart_price"], [0] * len(losses), color="#d9762c", label=no_label, zorder=3)
         for _, row in frame.iterrows():
-            axis.annotate(row["team"], (row["pregame_price"], 1 if row["won"] else 0), textcoords="offset points", xytext=(4, 4), fontsize=8)
+            axis.annotate(row["team"], (row["chart_price"], 1 if row["won"] else 0), textcoords="offset points", xytext=(4, 4), fontsize=8)
         axis.legend()
     axis.set_xlim(0, 1)
     axis.set_ylim(-0.1, 1.1)
-    axis.set_xlabel("Last mid price before tip")
+    axis.set_xlabel("Last mid before tip, or the first saved mid")
     axis.set_ylabel("Over hit" if CHART_KIND == "prop" else "Game result")
     axis.set_title("Pregame price against the result")
     fig.tight_layout()
@@ -2123,8 +2197,8 @@ def finish_grid(fig, axes, count, cols, xlabel, ylabel, title, filename):
     plt.close(fig)
 
 
-def draw_empty(axis, panel):
-    axis.text(0.5, 0.5, "No order-book path", ha="center", va="center", transform=axis.transAxes)
+def draw_empty(axis, panel, message="No quotes in the chart window"):
+    axis.text(0.5, 0.5, message, ha="center", va="center", transform=axis.transAxes)
     axis.set_title(panel_heading(panel), loc="left", fontsize=9)
 
 
@@ -2146,6 +2220,10 @@ def paths_by_rank(paths):
             "best_ask",
             "stat_value",
             "prop_line",
+            "final_stat",
+            "game_points",
+            "home_score",
+            "away_score",
         ):
             if column in frame:
                 frame[column] = pd.to_numeric(frame[column], errors="coerce")
@@ -2158,8 +2236,11 @@ def plot_variance_paths(paths):
     by_rank = paths_by_rank(paths)
     for axis, panel in zip(axes, ACTIVE_PANELS):
         frame = by_rank.get(panel["rank"])
-        if frame is None or "variance_score" not in frame or frame["variance_score"].dropna().empty:
+        if frame is None:
             draw_empty(axis, panel)
+            continue
+        if "variance_score" not in frame or frame["variance_score"].dropna().empty:
+            draw_empty(axis, panel, "Fewer than three five-minute quotes")
             continue
         axis.plot(frame["hours_from_tip"], frame["variance_score"], color="#6b3fa0", linewidth=1.4)
         axis.axvline(0, color="#b0b0b0", linewidth=0.8)
@@ -2207,17 +2288,33 @@ def plot_price_vs_score(paths):
         axis.plot(frame["hours_from_tip"], frame["mid"], color="#1f4e79", linewidth=1.4, label=price_label)
         axis.axvline(0, color="#b0b0b0", linewidth=0.8)
         axis.set_ylim(0, 1)
-        if CHART_KIND == "prop" and "stat_value" in frame and frame["stat_value"].notna().any():
+        if CHART_KIND == "prop":
             twin = axis.twinx()
-            twin.plot(frame["hours_from_tip"], frame["stat_value"], color="#b04a4a", linewidth=1.2)
-            posted = frame["prop_line"].dropna() if "prop_line" in frame else pd.Series(dtype=float)
-            line = float(posted.iloc[0]) if not posted.empty else 0
+            stat = pd.to_numeric(frame["stat_value"], errors="coerce") if "stat_value" in frame else pd.Series(dtype=float)
+            points = pd.to_numeric(frame["game_points"], errors="coerce") if "game_points" in frame else pd.Series(dtype=float)
+            finals = pd.to_numeric(frame["final_stat"], errors="coerce") if "final_stat" in frame else pd.Series(dtype=float)
+            posted = pd.to_numeric(frame["prop_line"], errors="coerce") if "prop_line" in frame else pd.Series(dtype=float)
+            line = float(posted.dropna().iloc[0]) if posted.notna().any() else 0.0
+            final = float(finals.dropna().iloc[0]) if finals.notna().any() else None
+            if stat.notna().any():
+                twin.plot(frame["hours_from_tip"], stat, color="#b04a4a", linewidth=1.2)
+                series_top = float(stat.max())
+                right_label = "Player stat"
+            elif points.notna().any():
+                twin.plot(frame["hours_from_tip"], points, color="#b04a4a", linewidth=1.2)
+                series_top = float(points.max())
+                right_label = "Game points"
+            else:
+                series_top = 0.0
+                right_label = "Player stat"
             if line:
                 twin.axhline(line, color="#b04a4a", linewidth=0.8, linestyle="--")
-            top = max(line, float(frame["stat_value"].max())) + 2
-            twin.set_ylim(0, top)
+            if final is not None:
+                twin.axhline(final, color="#2f7d4a", linewidth=0.8, linestyle=":")
+            top = max(line, series_top, 0 if final is None else final) + 2
+            twin.set_ylim(0, max(top, 2))
             if (index + 1) % cols == 0:
-                twin.set_ylabel("Stat")
+                twin.set_ylabel(right_label)
         else:
             scores = frame["score_margin"].dropna() if "score_margin" in frame else pd.Series(dtype=float)
             if not scores.empty:
@@ -2230,7 +2327,7 @@ def plot_price_vs_score(paths):
         axis.set_title(f"{panel['rank']}. {frame['label'].iloc[0]}", loc="left", fontsize=9)
         axis.grid(axis="y", color="#eeeeee")
     if CHART_KIND == "prop":
-        figure_title, ylabel = "Over price and the running stat", "Over price"
+        figure_title, ylabel = "Over price, the player stat, and the posted number", "Over price"
     else:
         figure_title, ylabel = "Win price and ESPN score margin", "Win price"
     finish_grid(fig, axes, count, cols, "Hours from listed tip", ylabel, figure_title, "price_vs_score.png")
@@ -2271,8 +2368,11 @@ def plot_bid_ask(paths):
     by_rank = paths_by_rank(paths)
     for axis, panel in zip(axes, ACTIVE_PANELS):
         frame = by_rank.get(panel["rank"])
-        if frame is None or "spread_width" not in frame or frame["spread_width"].dropna().empty:
+        if frame is None:
             draw_empty(axis, panel)
+            continue
+        if "spread_width" not in frame or frame["spread_width"].dropna().empty:
+            draw_empty(axis, panel, "No two-sided quote")
             continue
         axis.plot(frame["hours_from_tip"], frame["spread_width"], color="#1f4e79", linewidth=1.3)
         axis.axvline(0, color="#b0b0b0", linewidth=0.8)
@@ -2288,21 +2388,26 @@ def plot_alternate_spreads(frame):
     else:
         frame = frame.copy()
         frame["line"] = pd.to_numeric(frame["line"], errors="coerce")
-        frame["pregame_price"] = pd.to_numeric(frame["pregame_price"], errors="coerce")
-        grouped = {int(rank): part.dropna(subset=["line", "pregame_price"]) for rank, part in frame.groupby("rank")}
+        price_column = "shown_price" if "shown_price" in frame.columns else "pregame_price"
+        frame[price_column] = pd.to_numeric(frame[price_column], errors="coerce")
+        if price_column == "shown_price" and "pregame_price" in frame:
+            fallback = pd.to_numeric(frame["pregame_price"], errors="coerce")
+            frame[price_column] = frame[price_column].where(frame[price_column].notna(), fallback)
+        grouped = {int(rank): part.dropna(subset=["line", price_column]) for rank, part in frame.groupby("rank")}
     for axis, panel in zip(axes, ACTIVE_PANELS):
         part = grouped.get(panel["rank"])
         if part is None or part.empty:
-            draw_empty(axis, panel)
+            empty = "No priced line for this player" if CHART_KIND == "prop" else "No priced spread"
+            draw_empty(axis, panel, empty)
             continue
         part = part.sort_values("line")
-        axis.plot(part["line"], part["pregame_price"], color="#1f4e79", marker="o")
+        axis.plot(part["line"], part[price_column], color="#1f4e79", marker="o")
         axis.set_ylim(0, 1)
         axis.axhline(0.5, color="#b0b0b0", linewidth=0.8)
         axis.set_title(panel_heading(panel), loc="left", fontsize=9)
         axis.grid(axis="y", color="#eeeeee")
     if CHART_KIND == "prop":
-        x_label, y_label, alt_title = "Posted number", "Pregame Over price", "Other lines for the same player, before tip"
+        x_label, y_label, alt_title = "Posted number", "Over price", "Other lines for the same player"
     else:
         x_label, y_label, alt_title = "Points, from that team's side", "Pregame cover price", "Alternate spreads before tip"
     finish_grid(fig, axes, count, cols, x_label, y_label, alt_title, "alternate_spreads.png")
@@ -2401,16 +2506,16 @@ def plot_large_order_counts(summary):
 def plot_spread(summary):
     fig, axis = plt.subplots(figsize=(6.5, 6))
     if CHART_KIND == "prop":
-        frame = summary.dropna(subset=["pregame_price", "espn_margin"]).copy()
+        frame = chart_prices(summary).dropna(subset=["chart_price", "espn_margin"]).copy()
         axis.axhline(0, color="#b0b0b0", linewidth=1)
         if frame.empty:
             axis.text(0.5, 0.5, "No final stat in the same window", ha="center")
         else:
-            axis.scatter(frame["pregame_price"], frame["espn_margin"], color="#1f4e79")
+            axis.scatter(frame["chart_price"], frame["espn_margin"], color="#1f4e79")
             for _, row in frame.iterrows():
-                axis.annotate(row["team"], (row["pregame_price"], row["espn_margin"]), textcoords="offset points", xytext=(4, 4), fontsize=8)
+                axis.annotate(row["team"], (row["chart_price"], row["espn_margin"]), textcoords="offset points", xytext=(4, 4), fontsize=8)
         axis.set_xlim(0, 1)
-        axis.set_xlabel("Over mid before tip")
+        axis.set_xlabel("Over mid before tip, or the first saved mid")
         axis.set_ylabel("Final stat minus the posted number")
         axis.set_title("Pregame Over price against the final stat")
     else:

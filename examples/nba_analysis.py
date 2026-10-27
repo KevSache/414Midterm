@@ -11,6 +11,12 @@ markets by volume_clob and keeps the first N that actually appear in the
 hourly order-book files. A large stored volume does not by itself mean those
 files contain the game, so empty slugs are skipped.
 
+`props5` (or `--find props --each 5`) does the same charts for player
+over/under markets: the five highest-volume points lines that have an order
+book, then five assists, then five rebounds. `--stats` can add threes,
+steals, or blocks. Charts for that run are written to outputs/nba/props/
+so they do not replace the game-winner charts.
+
 Each kept market has a slug equal to its event slug, so the two outcomes are
 the two teams. The hourly Parquet files supply the bid and ask path. The
 markets table only stores the latest quote.
@@ -62,8 +68,31 @@ IN_GAME_HOURS = 2.5
 VARIANCE_BINS = 6
 MAX_SPREADS = 4
 MAX_FIND = 40
+MAX_PROP_EACH = 10
+DEFAULT_PROP_EACH = 4
 LARGE_SIZE_MULT = 10
 FOLLOW_MOVE = 0.03
+PROP_STATS = ("points", "assists", "rebounds", "threes", "steals", "blocks")
+STAT_SHORT = {
+    "points": "pts",
+    "assists": "ast",
+    "rebounds": "reb",
+    "threes": "3pm",
+    "steals": "stl",
+    "blocks": "blk",
+}
+BOX_KEY = {
+    "points": "PTS",
+    "assists": "AST",
+    "rebounds": "REB",
+    "threes": "3PT",
+    "steals": "STL",
+    "blocks": "BLK",
+}
+PROP_RE = re.compile(
+    r"^nba-([a-z]{3})-([a-z]{3})-(\d{4}-\d{2}-\d{2})"
+    r"-(points|assists|rebounds|threes|steals|blocks)-(.+)-(\d+)pt(\d+)$"
+)
 ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates={day}"
 ESPN_SUMMARY = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={event_id}"
 LINE_RE = re.compile(r"[-+]?\d+(?:\.\d+)?")
@@ -94,6 +123,7 @@ TOP_TEAMS = [
 ]
 ACTIVE_PANELS = TOP_TEAMS
 CHART_SUBJECT = "NBA.com Week 2 power rankings"
+CHART_KIND = "game"
 
 
 def connect_postgres():
@@ -343,13 +373,26 @@ def choose_game(duck, games, code, confirmed):
 
 
 def parse_find(text):
-    """Turn --find power or --find top20 into a selection kind and a count."""
+    """Turn --find into a kind and a count.
+
+    power, topN, props, and propsN are accepted. propsN sets how many markets
+    to keep for each stat. A bare 'props' leaves the count unset so --each
+    or the default can fill it in.
+    """
     value = (text or "power").strip().lower()
     if value == "power":
         return "power", len(TOP_TEAMS)
+    if value == "props":
+        return "props", None
+    match = re.fullmatch(r"props(\d+)", value)
+    if match:
+        count = int(match.group(1))
+        if not 1 <= count <= MAX_PROP_EACH:
+            raise SystemExit(f"--find propsN must be from 1 to {MAX_PROP_EACH}")
+        return "props", count
     match = re.fullmatch(r"top(\d+)", value)
     if match is None:
-        raise SystemExit("--find must be 'power' or 'topN', for example --find top20")
+        raise SystemExit("--find must be 'power', 'topN', or 'propsN', for example --find props5")
     count = int(match.group(1))
     if not 1 <= count <= MAX_FIND:
         raise SystemExit(f"--find topN must be from 1 to {MAX_FIND}")
@@ -433,8 +476,213 @@ def select_games(duck, games, side_markets, find_text):
     kind, count = parse_find(find_text)
     if kind == "power":
         return select_power(duck, games, side_markets), "NBA.com Week 2 power rankings"
+    if kind != "volume":
+        raise SystemExit("Player over/under markets use --find props, for example --find props5.")
     selected = select_volume(duck, games, count, side_markets)
     return selected, f"top {len(selected)} by volume_clob with an order book"
+
+
+def parse_stats(text):
+    """Keep --stats inside the slug families this script knows."""
+    stats = [part.strip().lower() for part in str(text or "").split(",") if part.strip()]
+    if not stats:
+        raise SystemExit("--stats needs at least one of " + ", ".join(PROP_STATS))
+    unknown = [stat for stat in stats if stat not in PROP_STATS]
+    if unknown:
+        raise SystemExit(f"Unknown stat {unknown[0]}. Choose from {', '.join(PROP_STATS)}.")
+    chosen = []
+    for stat in stats:
+        if stat not in chosen:
+            chosen.append(stat)
+    return chosen
+
+
+def resolve_each(find_count, each_flag):
+    """How many markets to keep for each stat."""
+    if each_flag is not None:
+        count = each_flag
+    elif find_count is None:
+        count = DEFAULT_PROP_EACH
+    else:
+        count = find_count
+    if not 1 <= count <= MAX_PROP_EACH:
+        raise SystemExit(f"--each must be from 1 to {MAX_PROP_EACH}")
+    return count
+
+
+def parse_prop_slug(slug):
+    match = PROP_RE.fullmatch(str(slug))
+    if match is None:
+        return None
+    away, home, day, stat, player_slug, whole, frac = match.groups()
+    return {
+        "away": away,
+        "home": home,
+        "game_day": day,
+        "stat": stat,
+        "player_slug": player_slug,
+        "line": float(f"{int(whole)}.{frac}"),
+        "game_slug": f"nba-{away}-{home}-{day}",
+    }
+
+
+def player_name(title, player_slug):
+    head = str(title).split(":", 1)[0].strip()
+    if head:
+        return head
+    return str(player_slug).replace("-", " ")
+
+
+def annotate_props(frame):
+    if frame is None or frame.empty:
+        return frame
+    parsed = frame["slug"].apply(parse_prop_slug)
+    keep = parsed.notna()
+    frame = frame.loc[keep].copy()
+    if frame.empty:
+        return frame
+    details = pd.DataFrame(parsed.loc[keep].tolist(), index=frame.index)
+    frame = pd.concat([frame, details], axis=1)
+    frame["player"] = [
+        player_name(title, slug) for title, slug in zip(frame["title"], frame["player_slug"])
+    ]
+    return frame
+
+
+def load_props(pg, stats):
+    stat_re = "|".join(stats)
+    frame = pd.read_sql(
+        f"""
+        SELECT m.slug, m.title, m.outcomes, m.token_ids, m.condition_id,
+               m.end_date AS tip, m.volume_clob, m.event_slug, r.resolved_yes
+        FROM markets m
+        LEFT JOIN resolutions r ON r.market_slug = m.slug
+        WHERE m.slug ~ '^nba-[a-z]{{3}}-[a-z]{{3}}-[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}-({stat_re})-'
+          AND m.slug NOT LIKE '%%1h%%'
+          AND m.end_date < now()
+        """,
+        pg,
+    )
+    frame["volume_clob"] = frame["volume_clob"].astype(float)
+    return annotate_props(frame)
+
+
+def yes_token(row):
+    outcomes = list(row["outcomes"])
+    tokens = list(row["token_ids"])
+    for index, name in enumerate(outcomes):
+        if str(name).strip().lower() == "yes":
+            return tokens[index], index == 0
+    return tokens[0], True
+
+
+def other_lines(props, row, limit=MAX_SPREADS - 1):
+    """Other posted numbers for the same player, stat, and game."""
+    mine = props[
+        (props["game_slug"] == row["game_slug"])
+        & (props["stat"] == row["stat"])
+        & (props["player_slug"] == row["player_slug"])
+        & (props["slug"] != row["slug"])
+    ].sort_values("volume_clob", ascending=False)
+    records = []
+    for _, alt in mine.head(limit).iterrows():
+        asset_id, _first = yes_token(alt)
+        volume = alt["volume_clob"]
+        records.append(
+            {
+                "slug": alt["slug"],
+                "title": alt["title"],
+                "condition_id": alt["condition_id"],
+                "asset_id": asset_id,
+                "volume_clob": None if pd.isna(volume) else float(volume),
+                "line": float(alt["line"]),
+                "kind": alt["stat"],
+            }
+        )
+    return records
+
+
+def prop_short_name(player, stat, line):
+    last = str(player).split()[-1]
+    return f"{last} {line:g} {STAT_SHORT[stat]}"
+
+
+def pack_prop(rank, row, asset_id, first, alts):
+    volume = row["volume_clob"]
+    game = {
+        "slug": row["slug"],
+        "game_slug": row["game_slug"],
+        "title": row["title"],
+        "away": row["away"],
+        "home": row["home"],
+        "tip": row["tip"],
+        "condition_id": row["condition_id"],
+        "outcomes": row["outcomes"],
+        "volume_clob": None if pd.isna(volume) else float(volume),
+        "resolved_yes": row["resolved_yes"],
+    }
+    return {
+        "kind": "prop",
+        "rank": rank,
+        "name": prop_short_name(row["player"], row["stat"], row["line"]),
+        "code": row["stat"],
+        "record": "",
+        "game": game,
+        "asset_id": asset_id,
+        "first": first,
+        "spreads": alts,
+        "total": None,
+        "stat": row["stat"],
+        "player": row["player"],
+        "player_slug": row["player_slug"],
+        "line": float(row["line"]),
+    }
+
+
+def select_props(duck, props, each, stats, probe=has_book):
+    """Keep `each` order-book markets for every requested stat.
+
+    The walk uses the highest volume_clob line for each player in each game.
+    Volume 0 is not probed. The walk stops at `each` hits or after four times
+    that many probes, per stat.
+    """
+    selected = []
+    for stat in stats:
+        mine = props[props["stat"] == stat].copy() if not props.empty else props
+        if mine.empty:
+            print(f"{stat}: no completed market", flush=True)
+            continue
+        mine["volume_clob"] = mine["volume_clob"].fillna(0)
+        mine = mine.sort_values(["volume_clob", "tip"], ascending=[False, False])
+        mine = mine.drop_duplicates(["game_slug", "player_slug"], keep="first")
+        mine = mine[mine["volume_clob"] > 0]
+        probe_limit = min(len(mine), max(each * 4, each))
+        print(
+            f"{stat}: keeping {each} from {len(mine)} players with volume. "
+            f"Probing at most {probe_limit}.",
+            flush=True,
+        )
+        if mine.empty:
+            continue
+        probes = 0
+        kept = 0
+        for _, row in mine.iterrows():
+            if kept >= each or probes >= probe_limit:
+                break
+            probes += 1
+            asset_id, first = yes_token(row)
+            print(f"  probe {row['slug']}  volume_clob={float(row['volume_clob']):,.0f}", flush=True)
+            if not probe(duck, row["tip"], row["condition_id"], asset_id, checks=(0, 1)):
+                print("  no order book", flush=True)
+                continue
+            kept += 1
+            rank = len(selected) + 1
+            selected.append(pack_prop(rank, row, asset_id, first, other_lines(props, row)))
+            print(f"  kept {kept}/{each} {row['player']} {stat} {row['line']:g}", flush=True)
+        if kept < each:
+            print(f"Found {kept} {stat} markets with an order book after {probes} probes.", flush=True)
+    subtitle = f"{each} each of {', '.join(stats)}"
+    return selected, subtitle
 
 
 def mid_price(bid, ask):
@@ -541,9 +789,35 @@ def find_espn_event(away, home, day, boards):
     return None
 
 
-def plays_frame(event_id, cache):
+def normalize_person(name):
+    text = str(name).lower().replace("'", "").replace("’", "").replace(".", "")
+    text = re.sub(r"[^a-z0-9]+", "-", text).strip("-")
+    return text
+
+
+def player_lines(payload):
+    """Box-score rows keyed by a normalized player name."""
+    found = {}
+    box = (payload or {}).get("boxscore") or {}
+    for team in box.get("players") or []:
+        groups = team.get("statistics") or []
+        if not groups:
+            continue
+        group = groups[0]
+        labels = group.get("labels") or []
+        for athlete in group.get("athletes") or []:
+            person = (athlete.get("athlete") or {}).get("displayName")
+            if not person:
+                continue
+            found[normalize_person(person)] = dict(zip(labels, athlete.get("stats") or []))
+    return found
+
+
+def load_event(event_id, cache):
     if event_id in cache:
         return cache[event_id]
+    empty = pd.DataFrame(columns=["wallclock", "home_score", "away_score", "text", "score_value", "scoring_play"])
+    packed = {"plays": empty, "players": {}}
     try:
         payload = fetch_json(ESPN_SUMMARY.format(event_id=event_id))
         rows = []
@@ -556,17 +830,26 @@ def plays_frame(event_id, cache):
                     "wallclock": wall,
                     "home_score": int(play.get("homeScore") or 0),
                     "away_score": int(play.get("awayScore") or 0),
+                    "text": play.get("text") or "",
+                    "score_value": int(play.get("scoreValue") or 0),
+                    "scoring_play": bool(play.get("scoringPlay")),
                 }
             )
         frame = pd.DataFrame(rows)
-        if not frame.empty:
+        if frame.empty:
+            frame = empty
+        else:
             frame["wallclock"] = pd.to_datetime(frame["wallclock"], utc=True)
             frame = frame.sort_values("wallclock")
+        packed = {"plays": frame, "players": player_lines(payload)}
     except Exception as error:
         print(f"  plays {event_id}: {error.__class__.__name__}", flush=True)
-        frame = pd.DataFrame()
-    cache[event_id] = frame
-    return frame
+    cache[event_id] = packed
+    return packed
+
+
+def plays_frame(event_id, cache):
+    return load_event(event_id, cache)["plays"]
 
 
 def quarter_list(competitor):
@@ -585,7 +868,7 @@ def game_bucket(margin):
 
 
 def fetch_result(game, cache, boards, play_cache):
-    slug = game["slug"]
+    slug = game["game_slug"] if "game_slug" in game and pd.notna(game["game_slug"]) else game["slug"]
     if slug in cache:
         return cache[slug]
     try:
@@ -596,13 +879,15 @@ def fetch_result(game, cache, boards, play_cache):
         competitors = {item["team"]["abbreviation"]: item for item in event["competitions"][0]["competitors"]}
         home = competitors[espn_abbrev(game["home"])]
         away = competitors[espn_abbrev(game["away"])]
+        packed = load_event(event["id"], play_cache)
         result = {
             "event_id": event["id"],
             "home_score": int(home.get("score") or 0),
             "away_score": int(away.get("score") or 0),
             "home_quarters": quarter_list(home),
             "away_quarters": quarter_list(away),
-            "plays": plays_frame(event["id"], play_cache),
+            "plays": packed["plays"],
+            "players": packed["players"],
         }
     except Exception as error:
         print(f"  score {slug}: {error.__class__.__name__}", flush=True)
@@ -635,7 +920,8 @@ def attach_scores(path, plays, team_is_home):
         merged.loc[live, "score_margin"] = merged.loc[live, "away_score"] - merged.loc[live, "home_score"]
         merged.loc[live, "team_score"] = merged.loc[live, "away_score"]
         merged.loc[live, "opponent_score"] = merged.loc[live, "home_score"]
-    return merged.drop(columns=["wallclock", "home_score", "away_score"], errors="ignore")
+    extra = [column for column in plays.columns if column in merged.columns]
+    return merged.drop(columns=extra, errors="ignore")
 
 
 def dedupe_orders(frame):
@@ -655,17 +941,154 @@ def scoring_times(plays):
     if plays is None or plays.empty:
         return empty
     frame = plays.sort_values("wallclock").copy()
-    changed = (frame["home_score"] + frame["away_score"]).diff().fillna(0) != 0
-    times = frame.loc[changed, ["wallclock"]]
+    total = frame["home_score"] + frame["away_score"]
+    delta = total.diff()
+    delta.iloc[0] = total.iloc[0]
+    times = frame.loc[delta != 0, ["wallclock"]]
     return times if not times.empty else empty
 
 
+def text_starts_with_player(text, player_slug):
+    head = re.split(r"\s+makes\b", text, maxsplit=1, flags=re.I)[0]
+    return normalize_person(head) == player_slug
+
+
+def stat_gain(text, score_value, scoring_play, player_slug, stat):
+    """Points, assists, rebounds, or the other box stat this play added for one player."""
+    raw = " ".join(str(text or "").split())
+    player_slug = normalize_person(player_slug)
+    try:
+        points = int(float(score_value or 0))
+    except (TypeError, ValueError):
+        points = 0
+    if stat == "points":
+        if not scoring_play or points <= 0:
+            return 0
+        return points if text_starts_with_player(raw, player_slug) else 0
+    if stat == "threes":
+        if not scoring_play or points != 3:
+            return 0
+        return 1 if text_starts_with_player(raw, player_slug) else 0
+    if stat == "assists":
+        match = re.search(r"\(([^)]+?)\s+assists\)", raw, flags=re.I)
+        return 1 if match and normalize_person(match.group(1)) == player_slug else 0
+    if stat == "steals":
+        match = re.search(r"\(([^)]+?)\s+steals\)", raw, flags=re.I)
+        return 1 if match and normalize_person(match.group(1)) == player_slug else 0
+    if stat == "rebounds":
+        if "team rebound" in raw.lower():
+            return 0
+        match = re.match(r"(.+?)\s+(?:offensive|defensive)\s+rebound\b", raw, flags=re.I)
+        return 1 if match and normalize_person(match.group(1)) == player_slug else 0
+    if stat == "blocks":
+        match = re.match(r"(.+?)\s+blocks\s+", raw, flags=re.I)
+        return 1 if match and normalize_person(match.group(1)) == player_slug else 0
+    return 0
+
+
+def stat_ticks(plays, player_slug, stat):
+    """Running total each time this player's stat increases."""
+    empty = pd.DataFrame(columns=["wallclock", "stat_total"])
+    if plays is None or plays.empty or "text" not in plays.columns:
+        return empty
+    total = 0
+    rows = []
+    ordered = plays.sort_values("wallclock")
+    for text, score_value, scoring, wall in zip(
+        ordered["text"], ordered["score_value"], ordered["scoring_play"], ordered["wallclock"]
+    ):
+        gained = stat_gain(text, score_value, bool(scoring), player_slug, stat)
+        if not gained:
+            continue
+        total += gained
+        rows.append({"wallclock": wall, "stat_total": total})
+    return pd.DataFrame(rows) if rows else empty
+
+
+def ticks_as_plays(ticks):
+    """Feed stat increases to the same 'led the next event' clock as baskets."""
+    columns = ["wallclock", "home_score", "away_score"]
+    if ticks is None or ticks.empty:
+        return pd.DataFrame(columns=columns)
+    return pd.DataFrame(
+        {
+            "wallclock": list(ticks["wallclock"]),
+            "home_score": list(range(1, len(ticks) + 1)),
+            "away_score": 0,
+        }
+    )
+
+
+def stat_number(raw, stat):
+    if raw is None or (isinstance(raw, float) and pd.isna(raw)):
+        return None
+    text = str(raw).strip()
+    if text == "" or text.lower() == "none":
+        return None
+    if stat == "threes":
+        text = text.split("-", 1)[0]
+    try:
+        return int(float(text))
+    except ValueError:
+        return None
+
+
+def final_stat(players, player_slug, stat):
+    row = (players or {}).get(normalize_person(player_slug))
+    if not row:
+        return None
+    return stat_number(row.get(BOX_KEY[stat]), stat)
+
+
+def prop_final(result, player_slug, stat, ticks):
+    if result is not None:
+        value = final_stat(result.get("players") or {}, player_slug, stat)
+        if value is not None:
+            return value
+    if ticks is not None and not ticks.empty:
+        return int(ticks.iloc[-1]["stat_total"])
+    return None
+
+
+def prop_bucket(stat, edge):
+    if edge is None or pd.isna(edge):
+        return None
+    gap = abs(float(edge))
+    close, blow = (2, 6) if stat == "points" else (1, 3)
+    if gap <= close:
+        return "close"
+    if gap >= blow:
+        return "blowout"
+    return "competitive"
+
+
+def attach_stat(path, ticks, line):
+    path = path.copy()
+    path["stat_value"] = pd.NA
+    path["prop_line"] = line
+    if path.empty or ticks is None or ticks.empty:
+        return path
+    merged = pd.merge_asof(
+        path.sort_values("bin"),
+        ticks.sort_values("wallclock"),
+        left_on="bin",
+        right_on="wallclock",
+        direction="backward",
+    )
+    live = merged["hours_from_tip"] >= 0
+    merged.loc[live, "stat_value"] = merged.loc[live, "stat_total"]
+    merged.loc[live & merged["stat_value"].isna(), "stat_value"] = 0
+    return merged.drop(columns=["wallclock", "stat_total"], errors="ignore")
+
+
 def classify_orders(orders, path, plays, tip):
-    """Mark large sizes whose price then moved, and which of those led a scoring play.
+    """Mark large sizes whose price then moved, and which of those led the next event.
 
     There is no wallet on these rows. A size that is removed cannot be told from a
-    cancel, so only posted sizes are kept. 'Led a score' means the previous basket
-    was at least 15 seconds earlier and the next basket came within two minutes.
+    cancel, so only posted sizes are kept. 'Led a score' means the previous event
+    was at least 15 seconds earlier and the next event came within two minutes.
+    For a game winner the event is any scoring play. For a player prop it is the
+    next time that player's stat went up.
     """
     columns = [
         "time", "hours_from_tip", "side", "price", "size", "med_size", "size_ratio",
@@ -733,39 +1156,24 @@ def quote_path(book, market, tip):
     return add_path_features(series_from(rows, tip))
 
 
-def analyze(find_text="power"):
-    global ACTIVE_PANELS, CHART_SUBJECT
-    OUTPUT.mkdir(parents=True, exist_ok=True)
-    pg = connect_postgres()
-    games = load_games(pg)
-    side_markets = load_side_markets(pg)
-    pg.close()
+def download_book(selected):
+    """Read each needed hour once. The focus flag marks the charted token."""
     duck = connect_duckdb()
-
-    selected, CHART_SUBJECT = select_games(duck, games, side_markets, find_text)
-    ACTIVE_PANELS = [
-        {"rank": item["rank"], "name": item["name"], "code": item["code"], "record": item.get("record") or ""}
-        for item in selected
-    ]
-    duck.close()
-    duck = connect_duckdb()
-
     needed = {}
     for item in selected:
-        if item["game"] is None:
+        if item.get("game") is None:
             continue
         game = item["game"]
         pairs = [(game["condition_id"], item["asset_id"], True)]
-        for market in item["spreads"]:
+        for market in item.get("spreads") or []:
             pairs.append((market["condition_id"], market["asset_id"], False))
-        if item["total"]:
+        if item.get("total"):
             pairs.append((item["total"]["condition_id"], item["total"]["asset_id"], False))
         for moment in hours_around(game["tip"]):
             bucket = needed.setdefault(moment, {})
             for market, asset, focus in pairs:
                 key = (market, asset)
                 bucket[key] = bucket.get(key, False) or focus
-
     quotes = []
     large_hits = []
     moments = sorted(needed)
@@ -783,6 +1191,30 @@ def analyze(find_text="power"):
     duck.close()
     book = pd.concat(quotes, ignore_index=True) if quotes else pd.DataFrame()
     large_book = pd.concat(large_hits, ignore_index=True) if large_hits else pd.DataFrame()
+    return book, large_book
+
+
+def set_panels(selected):
+    return [
+        {"rank": item["rank"], "name": item["name"], "code": item["code"], "record": item.get("record") or ""}
+        for item in selected
+    ]
+
+
+def analyze(find_text="power"):
+    global ACTIVE_PANELS, CHART_SUBJECT, CHART_KIND
+    CHART_KIND = "game"
+    OUTPUT.mkdir(parents=True, exist_ok=True)
+    pg = connect_postgres()
+    games = load_games(pg)
+    side_markets = load_side_markets(pg)
+    pg.close()
+    duck = connect_duckdb()
+
+    selected, CHART_SUBJECT = select_games(duck, games, side_markets, find_text)
+    ACTIVE_PANELS = set_panels(selected)
+    duck.close()
+    book, large_book = download_book(selected)
 
     summaries = []
     paths = []
@@ -975,6 +1407,187 @@ def analyze(find_text="power"):
                 summary["followed_n"] = int(tagged["price_followed"].sum())
                 summary["led_score_n"] = int(tagged["stands_out"].sum())
 
+    finish_run(summaries, paths, alternates, results, order_frames, [
+        "rank",
+        "team",
+        "game",
+        "variance_score_live",
+        "variance_score_early",
+        "variance_score_late",
+        "espn_margin",
+        "game_bucket",
+        "large_n",
+        "followed_n",
+        "led_score_n",
+        "won",
+    ])
+
+
+def analyze_props(each, stats):
+    """Same charts for player over/under markets, `each` per stat."""
+    global ACTIVE_PANELS, CHART_SUBJECT, CHART_KIND
+    CHART_KIND = "prop"
+    OUTPUT.mkdir(parents=True, exist_ok=True)
+    pg = connect_postgres()
+    props = load_props(pg, stats)
+    pg.close()
+    duck = connect_duckdb()
+    selected, CHART_SUBJECT = select_props(duck, props, each, stats)
+    duck.close()
+    if not selected:
+        raise SystemExit("No prop market had an order book in the probed hours. Nothing was charted.")
+    ACTIVE_PANELS = set_panels(selected)
+    book, large_book = download_book(selected)
+
+    summaries = []
+    paths = []
+    alternates = []
+    order_frames = []
+    results = []
+    score_cache = {}
+    boards = {}
+    play_cache = {}
+    for item in selected:
+        game = item["game"]
+        tip = game["tip"]
+        path = quote_path(
+            book,
+            {"condition_id": game["condition_id"], "asset_id": item["asset_id"]},
+            tip,
+        )
+        alt = item["spreads"][0] if item["spreads"] else None
+        alt_path = quote_path(book, alt, tip)
+        result = fetch_result(game, score_cache, boards, play_cache)
+        plays = None if result is None else result["plays"]
+        ticks = stat_ticks(plays, item["player_slug"], item["stat"])
+        path = attach_stat(path, ticks, item["line"])
+        if not path.empty and not alt_path.empty:
+            path = path.merge(
+                alt_path[["bin", "mid"]].rename(columns={"mid": "spread_mid"}),
+                on="bin",
+                how="left",
+            )
+        elif not path.empty:
+            path["spread_mid"] = pd.NA
+        final = prop_final(result, item["player_slug"], item["stat"], ticks)
+        edge = None if final is None else final - item["line"]
+        if result is None:
+            print(f"  no ESPN score for {game['game_slug']}", flush=True)
+        else:
+            shown = "n/a" if final is None else f"{final:g}"
+            print(
+                f"  ESPN {game['away']} at {game['home']} {item['player']} {item['stat']} {shown} "
+                f"(line {item['line']:g})",
+                flush=True,
+            )
+        resolved = game["resolved_yes"]
+        if pd.notna(resolved):
+            won = bool(resolved) if item["first"] else (not bool(resolved))
+        elif final is None or final == item["line"]:
+            won = None
+        else:
+            won = final > item["line"]
+        pre_std, pre_n = window_std(path, -HOURS_BEFORE, 0)
+        live_std, live_n = window_std(path, 0, IN_GAME_HOURS)
+        label = prop_short_name(item["player"], item["stat"], item["line"])
+        if final is not None:
+            label = f"{label}  final {final:g}"
+        summary = {
+            "rank": item["rank"],
+            "team": item["name"],
+            "player": item["player"],
+            "code": item["code"],
+            "stat": item["stat"],
+            "line": item["line"],
+            "record": "",
+            "game": game["slug"],
+            "opponent": f"{game['away']} at {game['home']}",
+            "tip_utc": tip,
+            "pregame_std": pre_std,
+            "in_game_std": live_std,
+            "pregame_n": pre_n,
+            "in_game_n": live_n,
+            "pregame_price": last_before_tip(path),
+            "won": won,
+            "variance_score_pregame": window_mean(path, "variance_score", -HOURS_BEFORE, 0),
+            "variance_score_early": window_mean(path, "variance_score", 0, IN_GAME_HOURS / 2),
+            "variance_score_late": window_mean(path, "variance_score", IN_GAME_HOURS / 2, IN_GAME_HOURS),
+            "variance_score_live": window_mean(path, "variance_score", 0, IN_GAME_HOURS),
+            "minutes_to_decided": minutes_until_decided(path),
+            "bid_ask_pregame": window_mean(path, "spread_width", -1, 0),
+            "bid_ask_live": window_mean(path, "spread_width", 0, IN_GAME_HOURS),
+            "final_stat": final,
+            "espn_margin": edge,
+            "game_bucket": prop_bucket(item["stat"], edge),
+            "volume_clob": game["volume_clob"],
+            "score_source": None if result is None else f"espn:{result['event_id']}",
+            "large_n": 0,
+            "followed_n": 0,
+            "led_score_n": 0,
+            "note": "" if result is not None else "Order book found. ESPN had no matching game.",
+        }
+        summaries.append(summary)
+        results.append(summary)
+        chosen = {
+            "slug": game["slug"],
+            "title": game["title"],
+            "condition_id": game["condition_id"],
+            "asset_id": item["asset_id"],
+            "volume_clob": game["volume_clob"],
+            "line": item["line"],
+        }
+        for market in [chosen, *item["spreads"]]:
+            same = market["condition_id"] == game["condition_id"]
+            series = path if same else quote_path(book, market, tip)
+            alternates.append(
+                {
+                    "rank": item["rank"],
+                    "team": item["name"],
+                    "stat": item["stat"],
+                    "line": market["line"],
+                    "pregame_price": last_before_tip(series),
+                    "title": market["title"],
+                    "volume_clob": market["volume_clob"],
+                }
+            )
+        if not path.empty:
+            plot_path = path.copy()
+            plot_path["team"] = item["name"]
+            plot_path["rank"] = item["rank"]
+            plot_path["label"] = label
+            plot_path["bucket"] = summary["game_bucket"]
+            paths.append(plot_path)
+        if not large_book.empty:
+            mine_orders = large_book[
+                (large_book["market"] == game["condition_id"]) & (large_book["asset_id"] == item["asset_id"])
+            ]
+            tagged = classify_orders(mine_orders, path, ticks_as_plays(ticks), tip)
+            if not tagged.empty:
+                tagged.insert(0, "rank", item["rank"])
+                tagged.insert(1, "team", item["name"])
+                tagged.insert(2, "label", label)
+                order_frames.append(tagged)
+                summary["large_n"] = int(len(tagged))
+                summary["followed_n"] = int(tagged["price_followed"].sum())
+                summary["led_score_n"] = int(tagged["stands_out"].sum())
+
+    finish_run(summaries, paths, alternates, results, order_frames, [
+        "rank",
+        "team",
+        "stat",
+        "line",
+        "final_stat",
+        "espn_margin",
+        "game_bucket",
+        "variance_score_live",
+        "large_n",
+        "followed_n",
+        "led_score_n",
+        "won",
+    ])
+
+
+def finish_run(summaries, paths, alternates, results, order_frames, columns):
     summary_frame = pd.DataFrame(summaries)
     alternate_frame = pd.DataFrame(alternates)
     summary_frame.to_csv(OUTPUT / "summary.csv", index=False)
@@ -998,21 +1611,8 @@ def analyze(find_text="power"):
     plot_spread(summary_frame)
     plot_large_orders(paths, orders)
     plot_large_order_counts(summary_frame)
-    columns = [
-        "rank",
-        "team",
-        "game",
-        "variance_score_live",
-        "variance_score_early",
-        "variance_score_late",
-        "espn_margin",
-        "game_bucket",
-        "large_n",
-        "followed_n",
-        "led_score_n",
-        "won",
-    ]
-    print(summary_frame[columns].to_string(index=False))
+    show = [column for column in columns if column in summary_frame.columns]
+    print(summary_frame[show].to_string(index=False))
     print(f"Wrote {OUTPUT}")
 
 
@@ -1027,13 +1627,15 @@ def panels_from_summary(summary):
 
 
 def redraw():
-    global ACTIVE_PANELS, CHART_SUBJECT
+    global ACTIVE_PANELS, CHART_SUBJECT, CHART_KIND
     summary_path = OUTPUT / "summary.csv"
     if not summary_path.exists():
         raise SystemExit(f"No saved table at {summary_path}. Run the script once without --plots-only.")
     summary = pd.read_csv(summary_path)
     ACTIVE_PANELS = panels_from_summary(summary)
-    CHART_SUBJECT = f"{len(ACTIVE_PANELS)} saved games"
+    CHART_KIND = "prop" if "stat" in summary.columns and summary["stat"].notna().any() else "game"
+    noun = "saved props" if CHART_KIND == "prop" else "saved games"
+    CHART_SUBJECT = f"{len(ACTIVE_PANELS)} {noun}"
     if "won" in summary:
         summary["won"] = summary["won"].map(
             lambda value: value if isinstance(value, bool) or pd.isna(value) else str(value).strip().lower() == "true"
@@ -1078,7 +1680,8 @@ def plot_paths(paths):
             axis.set_ylim(0, 1)
             axis.set_title(f"{panel['rank']}. {frame['label'].iloc[0]}", loc="left", fontsize=9)
         axis.grid(axis="y", color="#eeeeee")
-    finish_grid(fig, axes, count, cols, "Hours from listed tip", "Price of that team", f"Win price around tip, {CHART_SUBJECT}", "price_paths.png")
+    noun = "Over price" if CHART_KIND == "prop" else "Win price"
+    finish_grid(fig, axes, count, cols, "Hours from listed tip", noun, f"{noun} around tip, {CHART_SUBJECT}", "price_paths.png")
 
 
 def plot_variance(summary):
@@ -1110,16 +1713,18 @@ def plot_calibration(summary):
     else:
         wins = frame[frame["won"] == True]  # noqa: E712
         losses = frame[frame["won"] == False]  # noqa: E712
-        axis.scatter(wins["pregame_price"], [1] * len(wins), color="#1f4e79", label="Team won", zorder=3)
-        axis.scatter(losses["pregame_price"], [0] * len(losses), color="#d9762c", label="Team lost", zorder=3)
+        yes_label = "Over hit" if CHART_KIND == "prop" else "Team won"
+        no_label = "Over missed" if CHART_KIND == "prop" else "Team lost"
+        axis.scatter(wins["pregame_price"], [1] * len(wins), color="#1f4e79", label=yes_label, zorder=3)
+        axis.scatter(losses["pregame_price"], [0] * len(losses), color="#d9762c", label=no_label, zorder=3)
         for _, row in frame.iterrows():
             axis.annotate(row["team"], (row["pregame_price"], 1 if row["won"] else 0), textcoords="offset points", xytext=(4, 4), fontsize=8)
         axis.legend()
     axis.set_xlim(0, 1)
     axis.set_ylim(-0.1, 1.1)
     axis.set_xlabel("Last mid price before tip")
-    axis.set_ylabel("Game result")
-    axis.set_title("Pregame price against the resolution")
+    axis.set_ylabel("Over hit" if CHART_KIND == "prop" else "Game result")
+    axis.set_title("Pregame price against the result")
     fig.tight_layout()
     fig.savefig(OUTPUT / "calibration.png", dpi=140)
     plt.close(fig)
@@ -1183,6 +1788,8 @@ def paths_by_rank(paths):
             "spread_width",
             "best_bid",
             "best_ask",
+            "stat_value",
+            "prop_line",
         ):
             if column in frame:
                 frame[column] = pd.to_numeric(frame[column], errors="coerce")
@@ -1210,7 +1817,8 @@ def plot_variance_vs_margin(summary):
     fig, axis = plt.subplots(figsize=(7.5, 5.5))
     colors = {"close": "#1f4e79", "competitive": "#d9762c", "blowout": "#6b6b6b"}
     if frame.empty:
-        axis.text(0.5, 0.5, "No game has both a variance score and an ESPN score", ha="center")
+        empty = "No prop has both a variance score and a final stat" if CHART_KIND == "prop" else "No game has both a variance score and an ESPN score"
+        axis.text(0.5, 0.5, empty, ha="center")
     else:
         frame["abs_margin"] = frame["espn_margin"].abs()
         for bucket, color in colors.items():
@@ -1219,9 +1827,13 @@ def plot_variance_vs_margin(summary):
         for _, row in frame.iterrows():
             axis.annotate(row["team"], (abs(row["espn_margin"]), row["variance_score_live"]), textcoords="offset points", xytext=(4, 4), fontsize=8)
         axis.legend()
-    axis.set_xlabel("Absolute final margin")
+    if CHART_KIND == "prop":
+        axis.set_xlabel("How far the final stat finished from the number")
+        axis.set_title("Variance score against how close the stat finished")
+    else:
+        axis.set_xlabel("Absolute final margin")
+        axis.set_title("Variance score against the final margin")
     axis.set_ylabel("Mean in-game variance score")
-    axis.set_title("Variance score against the final margin")
     fig.tight_layout()
     fig.savefig(OUTPUT / "variance_vs_margin.png", dpi=140)
     plt.close(fig)
@@ -1235,20 +1847,37 @@ def plot_price_vs_score(paths):
         if frame is None:
             draw_empty(axis, panel)
             continue
-        axis.plot(frame["hours_from_tip"], frame["mid"], color="#1f4e79", linewidth=1.4, label="Win price")
+        price_label = "Over price" if CHART_KIND == "prop" else "Win price"
+        axis.plot(frame["hours_from_tip"], frame["mid"], color="#1f4e79", linewidth=1.4, label=price_label)
         axis.axvline(0, color="#b0b0b0", linewidth=0.8)
         axis.set_ylim(0, 1)
-        scores = frame["score_margin"].dropna() if "score_margin" in frame else pd.Series(dtype=float)
-        if not scores.empty:
+        if CHART_KIND == "prop" and "stat_value" in frame and frame["stat_value"].notna().any():
             twin = axis.twinx()
-            twin.plot(frame["hours_from_tip"], frame["score_margin"], color="#b04a4a", linewidth=1.2, label="Score margin")
+            twin.plot(frame["hours_from_tip"], frame["stat_value"], color="#b04a4a", linewidth=1.2)
+            posted = frame["prop_line"].dropna() if "prop_line" in frame else pd.Series(dtype=float)
+            line = float(posted.iloc[0]) if not posted.empty else 0
+            if line:
+                twin.axhline(line, color="#b04a4a", linewidth=0.8, linestyle="--")
+            top = max(line, float(frame["stat_value"].max())) + 2
+            twin.set_ylim(0, top)
             if (index + 1) % cols == 0:
-                twin.set_ylabel("Margin")
-            limit = max(15, float(scores.abs().max()) + 2)
-            twin.set_ylim(-limit, limit)
+                twin.set_ylabel("Stat")
+        else:
+            scores = frame["score_margin"].dropna() if "score_margin" in frame else pd.Series(dtype=float)
+            if not scores.empty:
+                twin = axis.twinx()
+                twin.plot(frame["hours_from_tip"], frame["score_margin"], color="#b04a4a", linewidth=1.2, label="Score margin")
+                if (index + 1) % cols == 0:
+                    twin.set_ylabel("Margin")
+                limit = max(15, float(scores.abs().max()) + 2)
+                twin.set_ylim(-limit, limit)
         axis.set_title(f"{panel['rank']}. {frame['label'].iloc[0]}", loc="left", fontsize=9)
         axis.grid(axis="y", color="#eeeeee")
-    finish_grid(fig, axes, count, cols, "Hours from listed tip", "Win price", "Win price and ESPN score margin", "price_vs_score.png")
+    if CHART_KIND == "prop":
+        figure_title, ylabel = "Over price and the running stat", "Over price"
+    else:
+        figure_title, ylabel = "Win price and ESPN score margin", "Win price"
+    finish_grid(fig, axes, count, cols, "Hours from listed tip", ylabel, figure_title, "price_vs_score.png")
 
 
 def plot_market_paths(paths):
@@ -1260,10 +1889,12 @@ def plot_market_paths(paths):
         if frame is None:
             draw_empty(axis, panel)
             continue
-        axis.plot(frame["hours_from_tip"], frame["mid"], color="#1f4e79", linewidth=1.4, label="Win")
+        main_label = "Chosen line" if CHART_KIND == "prop" else "Win"
+        next_label = "Next line" if CHART_KIND == "prop" else "Main spread"
+        axis.plot(frame["hours_from_tip"], frame["mid"], color="#1f4e79", linewidth=1.4, label=main_label)
         if "spread_mid" in frame and frame["spread_mid"].notna().any():
-            axis.plot(frame["hours_from_tip"], frame["spread_mid"], color="#d9762c", linewidth=1.2, label="Main spread")
-        if "total_mid" in frame and frame["total_mid"].notna().any():
+            axis.plot(frame["hours_from_tip"], frame["spread_mid"], color="#d9762c", linewidth=1.2, label=next_label)
+        if CHART_KIND != "prop" and "total_mid" in frame and frame["total_mid"].notna().any():
             axis.plot(frame["hours_from_tip"], frame["total_mid"], color="#2f7d4a", linewidth=1.2, label="Game total Over")
         axis.axvline(0, color="#b0b0b0", linewidth=0.8)
         axis.set_ylim(0, 1)
@@ -1272,7 +1903,11 @@ def plot_market_paths(paths):
         if not labeled:
             axis.legend(fontsize=8, loc="lower left")
             labeled = True
-    finish_grid(fig, axes, count, cols, "Hours from listed tip", "Price", "Win price, main spread, and game total", "market_paths.png")
+    if CHART_KIND == "prop":
+        market_title = "Chosen over/under and the next most traded line"
+    else:
+        market_title = "Win price, main spread, and game total"
+    finish_grid(fig, axes, count, cols, "Hours from listed tip", "Price", market_title, "market_paths.png")
 
 
 def plot_bid_ask(paths):
@@ -1310,7 +1945,11 @@ def plot_alternate_spreads(frame):
         axis.axhline(0.5, color="#b0b0b0", linewidth=0.8)
         axis.set_title(panel_heading(panel), loc="left", fontsize=9)
         axis.grid(axis="y", color="#eeeeee")
-    finish_grid(fig, axes, count, cols, "Points, from that team's side", "Pregame cover price", "Alternate spreads before tip", "alternate_spreads.png")
+    if CHART_KIND == "prop":
+        x_label, y_label, alt_title = "Posted number", "Pregame Over price", "Other lines for the same player, before tip"
+    else:
+        x_label, y_label, alt_title = "Points, from that team's side", "Pregame cover price", "Alternate spreads before tip"
+    finish_grid(fig, axes, count, cols, x_label, y_label, alt_title, "alternate_spreads.png")
 
 
 def plot_large_orders(paths, orders):
@@ -1349,8 +1988,10 @@ def plot_large_orders(paths, orders):
                 axis.scatter(quiet.loc[~buys, "hours_from_tip"], quiet.loc[~buys, "price"], marker="v", s=18, color="#9aa0a6", label="Large sell" if not labeled else None)
             if not loud.empty:
                 buys = loud["side"].str.upper() == "BUY"
-                axis.scatter(loud.loc[buys, "hours_from_tip"], loud.loc[buys, "price"], marker="^", s=36, color="#1f4e79", label="Led a score" if not labeled else None, zorder=3)
-                axis.scatter(loud.loc[~buys, "hours_from_tip"], loud.loc[~buys, "price"], marker="v", s=36, color="#d9762c", label="Led a score, sell" if not labeled else None, zorder=3)
+                led_buy = "Led the next stat" if CHART_KIND == "prop" else "Led a score"
+                led_sell = "Led the next stat, sell" if CHART_KIND == "prop" else "Led a score, sell"
+                axis.scatter(loud.loc[buys, "hours_from_tip"], loud.loc[buys, "price"], marker="^", s=36, color="#1f4e79", label=led_buy if not labeled else None, zorder=3)
+                axis.scatter(loud.loc[~buys, "hours_from_tip"], loud.loc[~buys, "price"], marker="v", s=36, color="#d9762c", label=led_sell if not labeled else None, zorder=3)
             labeled = True
         title = frame["label"].iloc[0] if "label" in frame else panel["name"]
         axis.set_title(f"{panel['rank']}. {title}", loc="left", fontsize=9)
@@ -1360,7 +2001,9 @@ def plot_large_orders(paths, orders):
     finish_grid(
         fig, axes, count, cols,
         "Hours from listed tip", "Price",
-        "Large orders. Dark marks led the next score and the price followed.",
+        "Large orders. Dark marks led the next stat and the price followed."
+        if CHART_KIND == "prop"
+        else "Large orders. Dark marks led the next score and the price followed.",
         "large_orders.png",
     )
 
@@ -1386,59 +2029,97 @@ def plot_large_order_counts(summary):
         width = 0.25
         axis.bar([p - width for p in positions], frame["large_n"], width=width, color="#c5c5c5", label="At least 10x median size")
         axis.bar(positions, frame["followed_n"], width=width, color="#d9762c", label="Price followed for 30 minutes")
-        axis.bar([p + width for p in positions], frame["led_score_n"], width=width, color="#1f4e79", label="Also led the next score")
+        led_label = "Also led the next stat" if CHART_KIND == "prop" else "Also led the next score"
+        axis.bar([p + width for p in positions], frame["led_score_n"], width=width, color="#1f4e79", label=led_label)
         axis.set_xticks(positions)
         axis.set_xticklabels(frame["team"], rotation=30, ha="right")
         axis.legend()
     axis.set_ylabel("Orders")
-    axis.set_title("Large book updates, and how many lined up with the game")
+    lined = "the player's next stat" if CHART_KIND == "prop" else "the game"
+    axis.set_title(f"Large book updates, and how many lined up with {lined}")
     fig.tight_layout()
     fig.savefig(OUTPUT / "large_order_counts.png", dpi=140)
     plt.close(fig)
 
 
 def plot_spread(summary):
-    frame = summary.dropna(subset=["pregame_price", "spread_pregame"]).copy()
     fig, axis = plt.subplots(figsize=(6.5, 6))
-    axis.plot([0, 1], [0, 1], color="#b0b0b0", linewidth=1)
-    if frame.empty:
-        axis.text(0.5, 0.5, "No spread quote in the same pregame window", ha="center")
+    if CHART_KIND == "prop":
+        frame = summary.dropna(subset=["pregame_price", "espn_margin"]).copy()
+        axis.axhline(0, color="#b0b0b0", linewidth=1)
+        if frame.empty:
+            axis.text(0.5, 0.5, "No final stat in the same window", ha="center")
+        else:
+            axis.scatter(frame["pregame_price"], frame["espn_margin"], color="#1f4e79")
+            for _, row in frame.iterrows():
+                axis.annotate(row["team"], (row["pregame_price"], row["espn_margin"]), textcoords="offset points", xytext=(4, 4), fontsize=8)
+        axis.set_xlim(0, 1)
+        axis.set_xlabel("Over mid before tip")
+        axis.set_ylabel("Final stat minus the posted number")
+        axis.set_title("Pregame Over price against the final stat")
     else:
-        axis.scatter(frame["pregame_price"], frame["spread_pregame"], color="#1f4e79")
-        for _, row in frame.iterrows():
-            axis.annotate(row["team"], (row["pregame_price"], row["spread_pregame"]), textcoords="offset points", xytext=(4, 4), fontsize=8)
-    axis.set_xlim(0, 1)
-    axis.set_ylim(0, 1)
-    axis.set_xlabel("Moneyline mid before tip")
-    axis.set_ylabel("Main spread mid before tip")
-    axis.set_title("Win price versus the highest-volume spread")
+        frame = summary.dropna(subset=["pregame_price", "spread_pregame"]).copy()
+        axis.plot([0, 1], [0, 1], color="#b0b0b0", linewidth=1)
+        if frame.empty:
+            axis.text(0.5, 0.5, "No spread quote in the same pregame window", ha="center")
+        else:
+            axis.scatter(frame["pregame_price"], frame["spread_pregame"], color="#1f4e79")
+            for _, row in frame.iterrows():
+                axis.annotate(row["team"], (row["pregame_price"], row["spread_pregame"]), textcoords="offset points", xytext=(4, 4), fontsize=8)
+        axis.set_xlim(0, 1)
+        axis.set_ylim(0, 1)
+        axis.set_xlabel("Moneyline mid before tip")
+        axis.set_ylabel("Main spread mid before tip")
+        axis.set_title("Win price versus the highest-volume spread")
     fig.tight_layout()
     fig.savefig(OUTPUT / "moneyline_vs_spread.png", dpi=140)
     plt.close(fig)
 
 
+def use_output(find_text):
+    global OUTPUT
+    kind, _count = parse_find(find_text)
+    OUTPUT = Path("outputs/nba/props") if kind == "props" else Path("outputs/nba")
+
+
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="NBA top-10 price paths from the class order-book files.")
+    parser = argparse.ArgumentParser(description="NBA price paths from the class order-book files.")
     parser.add_argument(
         "--find",
         default="power",
-        help="Which games to chart: power, or topN (for example top20). topN keeps the N highest volume_clob games that have order-book rows.",
+        help="power, topN, or propsN. top20 keeps 20 game winners. props5 keeps 5 points, 5 assists, and 5 rebounds markets that have order-book rows.",
+    )
+    parser.add_argument(
+        "--each",
+        type=int,
+        default=None,
+        help="With --find props, how many markets to keep for each stat (1 to 10). --find props5 is the same as --each 5.",
+    )
+    parser.add_argument(
+        "--stats",
+        default="points,assists,rebounds",
+        help="With --find props, which over/under stats. Any of points, assists, rebounds, threes, steals, blocks.",
     )
     parser.add_argument(
         "--plots-only",
         action="store_true",
-        help="Redraw the charts from outputs/nba CSVs. Does not download hourly files.",
+        help="Redraw the charts from the CSVs. Uses outputs/nba/props when --find is props. Does not download hourly files.",
     )
     args = parser.parse_args()
+    use_output(args.find)
     if args.plots_only:
         redraw()
     else:
         print(
             "Reading whole hourly Parquet files from the class CloudFront host. "
             "A full run is on the order of a few GB, and that host logs each file. "
-            "Final scores are a few small requests to ESPN, not to that host.",
+            "Final scores and player stats are a few small requests to ESPN, not to that host.",
             flush=True,
         )
-        analyze(args.find)
+        kind, count = parse_find(args.find)
+        if kind == "props":
+            analyze_props(resolve_each(count, args.each), parse_stats(args.stats))
+        else:
+            analyze(args.find)

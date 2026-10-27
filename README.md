@@ -192,7 +192,7 @@ print(con.execute("SELECT slug, title, best_bid, best_ask FROM pm.markets LIMIT 
 | `examples/supabase_psycopg2.py` | `markets` sample via psycopg2 |
 | `examples/supabase_pandas.py` | Same sample via pandas |
 | `examples/supabase_duckdb.py` | Same sample via DuckDB `ATTACH` |
-| `examples/nba_analysis.py` | Price path, variance, resolution, and spread charts. `--find power` uses the top 10 power rankings. `--find top20` uses the 20 highest-volume games that have order-book rows |
+| `examples/nba_analysis.py` | Price path, variance, resolution, and large-order charts. `--find power` uses the top 10 power rankings. `--find top20` uses the 20 highest-volume games that have order-book rows. `--find props5` does the same charts for player points, assists, and rebounds |
 
 ## NBA top 10
 
@@ -201,6 +201,9 @@ print(con.execute("SELECT slug, title, best_bid, best_ask FROM pm.markets LIMIT 
 ```bash
 python examples/nba_analysis.py --find power
 python examples/nba_analysis.py --find top20
+python examples/nba_analysis.py --find props5
+python examples/nba_analysis.py --find props --each 4 --stats points,assists,rebounds
+python examples/nba_analysis.py --find props5 --plots-only
 python examples/nba_analysis.py --plots-only
 ```
 
@@ -233,6 +236,21 @@ The run reads six hours before the listed tip through three hours after it. A bu
 The variance score is high while the win price is moving around, and it falls once the price sits still near 0 or 1. A blowout that runs the price from a coin flip to 0.95 in one smooth stretch still produces a high score during that run. A close game that keeps crossing back and forth stays high for longer. `variance_score_early` and `variance_score_late` in `summary.csv` split the first 2.5 hours after tip into two halves, which is the check for whether the score rises as the game goes on. `minutes_to_decided` is how many minutes after tip the win price first reaches 0.90 or 0.10.
 
 `large_orders.png` is built from the same hourly files, in the same pass. A kept row has a posted size at least 10 times the median size on that token and side. Repeated prints of the same resting size are collapsed. The price "followed" when the mid 30 minutes later is at least 0.03 further in that direction. "Led a score" means the previous scoring play was at least 15 seconds earlier and the next one came within two minutes. A dark mark is a row that did both. These rows are still anonymous order-book updates. A removed size is not included, because a cancel and a fill look the same. `--plots-only` draws this chart only when `large_orders.csv` is already in `outputs/nba/`. A run from before this change does not have that file, so produce it with a new full run.
+
+## Player points, assists, and rebounds
+
+The same charts can be drawn for player over/under markets. A slug looks like `nba-sas-okc-2026-05-30-rebounds-chet-holmgren-8pt5`, and the title is `Chet Holmgren: Rebounds O/U 8.5`. The two outcomes are Yes and No. The charted price is Yes, which is the Over.
+
+```bash
+python examples/nba_analysis.py --find props5
+python examples/nba_analysis.py --find props --each 3 --stats points,assists,rebounds,threes
+```
+
+`--find props5` keeps five points markets, five assists markets, and five rebounds markets. `--each` is the same knob, and `--find props` with no number uses 4. The maximum is 10 per stat. `--stats` accepts `points`, `assists`, `rebounds`, `threes`, `steals`, and `blocks`. Points, assists, and rebounds are the ones with real volume. Threes, steals, and blocks are in the database, and almost none of them have `volume_clob` above zero.
+
+For each stat the script keeps the highest `volume_clob` line for a player in a game, skips markets with volume 0, and probes the hourly files until it has that many order books or it has probed four times the requested count. A stat can come back with fewer panels when the books are empty. Other posted numbers for that same player are read from those same hours and drawn as the alternate-line chart. The run writes `outputs/nba/props/`, so it does not replace the game-winner charts. `--find props5 --plots-only` redraws that folder only.
+
+The price, variance, bid-ask gap, and large-order charts are the Over price. `price_vs_score.png` draws that price against the player's running stat, with a dashed line at the posted number. The final stat is the ESPN box score. `espn_margin` in the summary is the final stat minus the posted number. A points prop is "close" when that gap is 2 or less and a "blowout" when it is 6 or more. Assists, rebounds, threes, steals, and blocks use 1 and 3. On the large-order chart, a dark mark means the Over price then moved that way and the order came at least 15 seconds after the player's previous stat and within two minutes before the next one. There is still no wallet on the row.
 
 The class database does not store the point margin. `won` is the Polymarket resolution, and the score, quarter lines, and margin come from ESPN. `markets.best_bid` is the latest snapshot, not the history, so the price charts come from the Parquet files. Some game-winner markets have volume in Postgres and still have zero Parquet rows; those teams stay blank on the charts.
 

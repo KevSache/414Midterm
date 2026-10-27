@@ -6,16 +6,17 @@ Two selections are built in select_games:
     python examples/nba_analysis.py --find top20
 
 `power` is the NBA.com Week 2 power rankings from October 26, 2026, one
-completed game per team. `top20` (or any `topN`) sorts completed game-winner
-markets by volume_clob and keeps the first N that actually appear in the
-hourly order-book files. A large stored volume does not by itself mean those
-files contain the game, so empty slugs are skipped.
+completed game per team. `top20` (or any `topN`) reads the hourly order-book
+files around every completed NBA tip and keeps the N game winners with the
+most posted size in those files. A market that never appears there is not
+charted, whatever its stored volume_clob says.
 
 `props5` (or `--find props --each 5`) does the same charts for player
-over/under markets: the five highest-volume points lines that have an order
-book, then five assists, then five rebounds. `--stats` can add threes,
-steals, or blocks. Charts for that run are written to outputs/nba/props/
-so they do not replace the game-winner charts.
+over/under markets. It reads those same tip hours and keeps the five points
+lines with the most posted size, then five assists, then five rebounds.
+A line is charted only when its token is in the files. `--stats` can add
+threes, steals, or blocks. Charts for that run are written to
+outputs/nba/props/ so they do not replace the game-winner charts.
 
 Each kept market has a slug equal to its event slug, so the two outcomes are
 the two teams. The hourly Parquet files supply the bid and ask path. The
@@ -346,6 +347,97 @@ def read_hour_scan(duck, moment, pairs):
     return bins, larges
 
 
+def search_hours(tip):
+    """The tip hour, the hour before it, and the hour after it."""
+    base = tip.replace(minute=0, second=0, microsecond=0)
+    return [base + timedelta(hours=offset) for offset in (-1, 0, 1)]
+
+
+def activity_in_hour(duck, moment, pairs):
+    """Posted-size totals for these tokens in one hourly file.
+
+    size > 0 is a posted level. A later cancel is a separate row with size 0
+    and is not counted. This is not matched trade volume.
+    """
+    empty = pd.DataFrame(columns=["condition_id", "asset_id", "book_updates", "book_size"])
+    if not pairs:
+        return empty
+    url = f"{BUCKET}/events-{hour_key(moment)}.parquet"
+    values = ", ".join(f"('{market}', '{asset}')" for market, asset in pairs)
+    sql = f"""
+        WITH want(market, asset_id) AS (VALUES {values})
+        SELECT w.market, w.asset_id, count(*) AS book_updates, sum(p.size) AS book_size
+        FROM read_parquet('{url}') p
+        JOIN want w ON p.market = w.market AND p.asset_id = w.asset_id
+        WHERE p.size > 0
+        GROUP BY 1, 2
+    """
+    try:
+        rows = duck.execute(sql).fetchall()
+    except Exception as error:
+        print(f"  skip {hour_key(moment)}: {error.__class__.__name__}", flush=True)
+        return empty
+    return pd.DataFrame(rows, columns=["condition_id", "asset_id", "book_updates", "book_size"])
+
+
+def discover_activity(frame):
+    """Sum posted size for each token in the three hours around its listed tip.
+
+    Each distinct hour file is read once. The returned rows are only tokens
+    that appeared, so a market with no order book is absent.
+    """
+    empty = pd.DataFrame(columns=["condition_id", "asset_id", "book_updates", "book_size"])
+    if frame is None or frame.empty:
+        return empty
+    buckets = {}
+    for _, row in frame.iterrows():
+        pair = (str(row["condition_id"]), str(row["asset_id"]))
+        for moment in search_hours(row["tip"]):
+            buckets.setdefault(moment, set()).add(pair)
+    moments = sorted(buckets)
+    print(
+        f"Searching {len(moments)} hourly files for NBA tokens around each listed tip. "
+        "A file is one hour for the whole venue, read once.",
+        flush=True,
+    )
+    duck = None
+    parts = []
+    try:
+        duck = connect_duckdb()
+        for index, moment in enumerate(moments, start=1):
+            if index > 1 and index % 6 == 1:
+                duck.close()
+                duck = connect_duckdb()
+            print(f"  book hour {index}/{len(moments)} {hour_key(moment)}", flush=True)
+            found = activity_in_hour(duck, moment, buckets[moment])
+            if not found.empty:
+                parts.append(found)
+    finally:
+        if duck is not None:
+            try:
+                duck.close()
+            except Exception:
+                pass
+    if not parts:
+        return empty
+    combined = pd.concat(parts, ignore_index=True)
+    combined["book_updates"] = combined["book_updates"].astype(float)
+    combined["book_size"] = combined["book_size"].astype(float)
+    return (
+        combined.groupby(["condition_id", "asset_id"], as_index=False)[["book_updates", "book_size"]]
+        .sum()
+    )
+
+
+def book_fields(game):
+    found = {}
+    if "book_size" in game and pd.notna(game["book_size"]):
+        found["book_size"] = float(game["book_size"])
+    if "book_updates" in game and pd.notna(game["book_updates"]):
+        found["book_updates"] = int(game["book_updates"])
+    return found
+
+
 def has_book(duck, tip, condition_id, asset_id, checks=(0, 1, 3)):
     for hours_back in checks:
         probe = (tip - timedelta(hours=hours_back)).replace(minute=0, second=0, microsecond=0)
@@ -432,40 +524,73 @@ def select_power(duck, games, side_markets):
     return selected
 
 
-def select_volume(duck, games, count, side_markets, probe=has_book):
-    """Highest volume_clob games whose hourly files contain the away-team token.
+def moneyline_tokens(games):
+    """Away-team token for each completed game winner. That is the charted price."""
+    rows = []
+    for _, row in games.iterrows():
+        asset_id, _first = token_for(row, row["away"])
+        rows.append(
+            {
+                "slug": row["slug"],
+                "condition_id": row["condition_id"],
+                "asset_id": asset_id,
+                "tip": row["tip"],
+            }
+        )
+    return pd.DataFrame(rows)
 
-    Games with no order-book rows are skipped, so a raw top-N by volume is not
-    enough. The walk stops at `count` hits or after three times that many probes.
-    """
-    ordered = games.copy()
-    ordered["volume_clob"] = ordered["volume_clob"].fillna(0)
-    ordered = ordered[ordered["volume_clob"] > 0].sort_values(["volume_clob", "tip"], ascending=[False, False])
-    probe_limit = min(len(ordered), max(count * 3, count))
-    print(
-        f"Walking volume_clob from the top. Keeping {count} games with order-book rows, "
-        f"probing at most {probe_limit}.",
-        flush=True,
-    )
+
+def rank_game_winners(games, activity, count, side_markets):
+    """Keep the game winners with the most posted size in the order book."""
+    if games is None or games.empty or activity is None or activity.empty:
+        return []
+    tokens = moneyline_tokens(games)
+    ranked = tokens.merge(activity, on=["condition_id", "asset_id"], how="inner")
+    ranked = ranked[ranked["book_updates"] > 0]
+    if ranked.empty:
+        return []
+    ranked = ranked.sort_values(["book_size", "book_updates"], ascending=[False, False])
+    chosen = ranked.head(count)
+    by_slug = games.set_index("slug", drop=False)
     selected = []
-    probes = 0
-    for _, row in ordered.iterrows():
-        if len(selected) >= count or probes >= probe_limit:
-            break
-        probes += 1
+    for _, hit in chosen.iterrows():
+        row = by_slug.loc[hit["slug"]]
+        if isinstance(row, pd.DataFrame):
+            row = row.iloc[0]
+        row = row.copy()
+        row["book_size"] = float(hit["book_size"])
+        row["book_updates"] = int(hit["book_updates"])
         asset_id, first = token_for(row, row["away"])
-        print(f"  probe {row['slug']}  volume_clob={float(row['volume_clob']):,.0f}", flush=True)
-        if not probe(duck, row["tip"], row["condition_id"], asset_id, checks=(0, 1)):
-            print("  no order book", flush=True)
-            continue
         name = str(list(row["outcomes"])[0])
         spreads, total = side_markets_for(side_markets, row["slug"], name)
         rank = len(selected) + 1
         selected.append(pack_game(rank, name, row["away"], "", row, asset_id, first, spreads, total))
-        print(f"  kept {rank}/{count} {row['slug']}", flush=True)
+        stored = 0 if pd.isna(row["volume_clob"]) else float(row["volume_clob"])
+        print(
+            f"  kept {rank}/{count} {row['slug']}  posted_size={float(hit['book_size']):,.0f}  "
+            f"updates={int(hit['book_updates']):,}  volume_clob={stored:,.0f}",
+            flush=True,
+        )
     if len(selected) < count:
-        print(f"Found {len(selected)} games with an order book after {probes} probes.", flush=True)
+        print(f"Found {len(selected)} game winners in the order book.", flush=True)
     return selected
+
+
+def select_volume(duck, games, count, side_markets, activity=None):
+    """Game winners ranked by posted size in the hours around tip.
+
+    `duck` is unused. The search opens its own connection and reads each
+    distinct hour once. Markets that never appear are left out, including
+    ones with a large stored volume_clob.
+    """
+    del duck
+    if activity is None:
+        activity = discover_activity(moneyline_tokens(games))
+    print(
+        f"Keeping up to {count} game winners with the most posted size in those hours.",
+        flush=True,
+    )
+    return rank_game_winners(games, activity, count, side_markets)
 
 
 def select_games(duck, games, side_markets, find_text):
@@ -480,7 +605,11 @@ def select_games(duck, games, side_markets, find_text):
     if kind != "volume":
         raise SystemExit("Player over/under markets use --find props, for example --find props5.")
     selected = select_volume(duck, games, count, side_markets)
-    return selected, f"top {len(selected)} by volume_clob with an order book"
+    if not selected:
+        raise SystemExit(
+            "No game-winner token appeared in the order book around its listed tip. Nothing was charted."
+        )
+    return selected, f"top {len(selected)} by posted size in the order book"
 
 
 def parse_stats(text):
@@ -621,6 +750,7 @@ def pack_prop(rank, row, asset_id, first, alts):
         "outcomes": row["outcomes"],
         "volume_clob": None if pd.isna(volume) else float(volume),
         "resolved_yes": row["resolved_yes"],
+        **book_fields(row),
     }
     return {
         "kind": "prop",
@@ -640,48 +770,68 @@ def pack_prop(rank, row, asset_id, first, alts):
     }
 
 
-def select_props(duck, props, each, stats, probe=has_book):
-    """Keep `each` order-book markets for every requested stat.
+def prop_tokens(props):
+    rows = []
+    for _, row in props.iterrows():
+        asset_id, first = yes_token(row)
+        rows.append(
+            {
+                "slug": row["slug"],
+                "condition_id": row["condition_id"],
+                "asset_id": asset_id,
+                "first": first,
+                "tip": row["tip"],
+            }
+        )
+    return pd.DataFrame(rows)
 
-    The walk uses the highest volume_clob line for each player in each game.
-    Volume 0 is not probed. The walk stops at `each` hits or after four times
-    that many probes, per stat.
+
+def rank_props(props, activity, each, stats):
+    """For each stat, keep the lines with the most posted size in the order book.
+
+    When one player has several numbers in the same game, the line with the
+    most posted size is the one that is charted.
     """
+    if props is None or props.empty or activity is None or activity.empty:
+        return []
+    tokens = prop_tokens(props)
+    ranked = tokens.merge(activity, on=["condition_id", "asset_id"], how="inner")
+    ranked = ranked[ranked["book_updates"] > 0]
+    if ranked.empty:
+        return []
+    details = props.drop(columns=[column for column in ("condition_id", "asset_id", "tip") if column in props.columns])
+    ranked = ranked.merge(details, on="slug", how="left")
+    ranked = ranked.sort_values(["book_size", "book_updates"], ascending=[False, False])
+    ranked = ranked.drop_duplicates(["stat", "game_slug", "player_slug"], keep="first")
     selected = []
     for stat in stats:
-        mine = props[props["stat"] == stat].copy() if not props.empty else props
-        if mine.empty:
-            print(f"{stat}: no completed market", flush=True)
-            continue
-        mine["volume_clob"] = mine["volume_clob"].fillna(0)
-        mine = mine.sort_values(["volume_clob", "tip"], ascending=[False, False])
-        mine = mine.drop_duplicates(["game_slug", "player_slug"], keep="first")
-        mine = mine[mine["volume_clob"] > 0]
-        probe_limit = min(len(mine), max(each * 4, each))
-        print(
-            f"{stat}: keeping {each} from {len(mine)} players with volume. "
-            f"Probing at most {probe_limit}.",
-            flush=True,
-        )
-        if mine.empty:
-            continue
-        probes = 0
+        part = ranked[ranked["stat"] == stat]
+        print(f"{stat}: {len(part)} players appeared in the order book. Keeping {min(each, len(part))}.", flush=True)
         kept = 0
-        for _, row in mine.iterrows():
-            if kept >= each or probes >= probe_limit:
-                break
-            probes += 1
-            asset_id, first = yes_token(row)
-            print(f"  probe {row['slug']}  volume_clob={float(row['volume_clob']):,.0f}", flush=True)
-            if not probe(duck, row["tip"], row["condition_id"], asset_id, checks=(0, 1)):
-                print("  no order book", flush=True)
-                continue
+        for _, row in part.head(each).iterrows():
             kept += 1
             rank = len(selected) + 1
-            selected.append(pack_prop(rank, row, asset_id, first, other_lines(props, row)))
-            print(f"  kept {kept}/{each} {row['player']} {stat} {row['line']:g}", flush=True)
+            selected.append(pack_prop(rank, row, row["asset_id"], bool(row["first"]), other_lines(props, row)))
+            stored = 0 if pd.isna(row["volume_clob"]) else float(row["volume_clob"])
+            print(
+                f"  kept {kept}/{each} {row['player']} {stat} {row['line']:g}  "
+                f"posted_size={float(row['book_size']):,.0f}  volume_clob={stored:,.0f}",
+                flush=True,
+            )
         if kept < each:
-            print(f"Found {kept} {stat} markets with an order book after {probes} probes.", flush=True)
+            print(f"Found {kept} {stat} markets in the order book.", flush=True)
+    return selected
+
+
+def select_props(duck, props, each, stats, activity=None):
+    """Keep `each` markets per stat, ranked by posted size in the order book."""
+    del duck
+    if props is None or props.empty:
+        return [], f"{each} each of {', '.join(stats)}"
+    wanted = props[props["stat"].isin(stats)] if "stat" in props.columns else props
+    if activity is None:
+        activity = discover_activity(prop_tokens(wanted))
+    selected = rank_props(props, activity, each, stats)
     subtitle = f"{each} each of {', '.join(stats)}"
     return selected, subtitle
 
@@ -1211,10 +1361,11 @@ def analyze(find_text="power"):
     side_markets = load_side_markets(pg)
     pg.close()
     duck = connect_duckdb()
-
-    selected, CHART_SUBJECT = select_games(duck, games, side_markets, find_text)
+    try:
+        selected, CHART_SUBJECT = select_games(duck, games, side_markets, find_text)
+    finally:
+        duck.close()
     ACTIVE_PANELS = set_panels(selected)
-    duck.close()
     book, large_book = download_book(selected)
 
     summaries = []
@@ -1360,6 +1511,7 @@ def analyze(find_text="power"):
                 "large_n": 0,
                 "followed_n": 0,
                 "led_score_n": 0,
+                **book_fields(game),
                 "volume_clob": None if pd.isna(game["volume_clob"]) else game["volume_clob"],
                 "score_source": None if result is None else f"espn:{result['event_id']}",
                 "note": "" if result is not None else "Order book found. ESPN had no matching final score.",
@@ -1420,6 +1572,8 @@ def analyze(find_text="power"):
         "large_n",
         "followed_n",
         "led_score_n",
+        "book_size",
+        "book_updates",
         "won",
     ])
 
@@ -1520,6 +1674,7 @@ def analyze_props(each, stats):
             "final_stat": final,
             "espn_margin": edge,
             "game_bucket": prop_bucket(item["stat"], edge),
+            **book_fields(game),
             "volume_clob": game["volume_clob"],
             "score_source": None if result is None else f"espn:{result['event_id']}",
             "large_n": 0,
@@ -1584,6 +1739,8 @@ def analyze_props(each, stats):
         "large_n",
         "followed_n",
         "led_score_n",
+        "book_size",
+        "book_updates",
         "won",
     ])
 
@@ -1615,7 +1772,7 @@ SHARED_COLUMN_DOCS = {
     ("*", "team"): "Name printed on the panel.",
     ("*", "label"): "Title drawn on the panel.",
     ("*", "code"): "Three-letter team code from the slug.",
-    ("*", "record"): "Win-loss record from the Week 2 power ranking. Blank for a volume selection.",
+    ("*", "record"): "Win-loss record from the Week 2 power ranking. Blank when the panels were chosen from the order book.",
     ("*", "game"): "Market slug of the charted contract.",
     ("*", "opponent"): "The other team.",
     ("*", "opponent_code"): "Three-letter code of the other team.",
@@ -1635,7 +1792,9 @@ SHARED_COLUMN_DOCS = {
     ("*", "large_n"): "Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed.",
     ("*", "followed_n"): "How many of those large sizes were followed by a mid move of at least 0.03 in the same direction over the next 30 minutes. A buy has to move the mid up. A sell has to move it down.",
     ("*", "led_score_n"): "How many large sizes both followed the price and arrived at least 15 seconds after the previous event and within 2 minutes before the next one.",
-    ("*", "volume_clob"): "Stored lifetime CLOB volume of this contract. It is a snapshot from the markets table, not a sum over the game.",
+    ("*", "book_size"): "Sum of posted size (size greater than 0) for the charted token in the hour before tip, the tip hour, and the hour after. This is the ranking key for --find topN and --find props. It is not matched trade volume and it is not volume_clob.",
+    ("*", "book_updates"): "How many of those posted-size rows the charted token had in those three hours.",
+    ("*", "volume_clob"): "Stored lifetime CLOB volume of this contract. It is a snapshot from the markets table, not a sum over the game, and it is not the ranking key.",
     ("*", "score_source"): "ESPN event id, written as espn:<id>.",
     ("*", "note"): "Why a row has no price path or no ESPN result. Blank when both were found.",
     ("*", "bin"): "Start of the 5-minute window, in UTC.",
@@ -2281,7 +2440,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--find",
         default="power",
-        help="power, topN, or propsN. top20 keeps 20 game winners. props5 keeps 5 points, 5 assists, and 5 rebounds markets that have order-book rows.",
+        help="power, topN, or propsN. top20 keeps the 20 game winners with the most posted size in the order book around tip. props5 keeps 5 points, 5 assists, and 5 rebounds markets the same way. volume_clob is stored, not used to choose.",
     )
     parser.add_argument(
         "--each",

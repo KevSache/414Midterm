@@ -4,15 +4,17 @@
     python examples/nba_analysis.py --find top20
 
 The default, `top10`, reads the hourly order-book files around every
-completed NBA tip and keeps the 10 game winners with the most posted size.
-Any `topN` from 1 to 40 does the same. There is no team list. A market that
-never appears in those files is not charted, whatever its stored
-volume_clob says.
+completed NBA tip and keeps game winners that are high on both matched
+volume (`volume_clob` at least 1,000) and posted size in those files.
+Any `topN` from 1 to 40 does the same. There is no team list. A market
+with a noisy book and almost no trades is left out, and so is a market
+that never appears in the files.
 
 `props5` (or `--find props --each 5`) does the same charts for player
-over/under markets. It reads those same tip hours and keeps the five points
-lines with the most posted size, then five assists, then five rebounds.
-A line is charted only when its token is in the files. `--stats` can add
+over/under markets. It reads those same tip hours and keeps points,
+assists, and rebounds lines that are high on both matched volume and
+posted size. A line is charted only when its token is in the files and
+its stored volume is at least 1,000. `--stats` can add
 threes, steals, or blocks. Charts for that run are written to
 outputs/nba/props/ so they do not replace the game-winner charts.
 
@@ -69,6 +71,9 @@ VARIANCE_BINS = 6
 MAX_SPREADS = 4
 MAX_FIND = 40
 DEFAULT_TOP = 10
+# Matched volume below this is quote noise in this NBA extract. The gap in
+# game-winner volume_clob sits between about 900 and about 2,700.
+MIN_VOLUME_CLOB = 1000
 MAX_PROP_EACH = 10
 DEFAULT_PROP_EACH = 4
 LARGE_SIZE_MULT = 10
@@ -110,7 +115,7 @@ ESPN_ABBREV = {
 }
 
 ACTIVE_PANELS = []
-CHART_SUBJECT = "NBA game winners by posted size"
+CHART_SUBJECT = "NBA game winners with matched volume and a posted book"
 CHART_KIND = "game"
 
 
@@ -414,6 +419,8 @@ def book_fields(game):
         found["book_size"] = float(game["book_size"])
     if "book_updates" in game and pd.notna(game["book_updates"]):
         found["book_updates"] = int(game["book_updates"])
+    if "balance" in game and pd.notna(game["balance"]):
+        found["balance"] = float(game["balance"])
     return found
 
 
@@ -479,16 +486,49 @@ def moneyline_tokens(games):
     return pd.DataFrame(rows)
 
 
+def balance_ranks(frame):
+    """Keep rows with a book and matched volume of at least MIN_VOLUME_CLOB.
+
+    `balance` is the lower of the two percentile ranks inside that set.
+    Sorting by it puts a market first only when both numbers are high.
+    A huge posted size cannot rescue a volume of 129, and a huge
+    volume_clob cannot rescue a book that is barely there.
+    """
+    if frame is None or frame.empty:
+        return frame.iloc[0:0].copy() if frame is not None else frame
+    ranked = frame.copy()
+    ranked["volume_clob"] = pd.to_numeric(ranked["volume_clob"], errors="coerce").fillna(0.0)
+    ranked["book_size"] = pd.to_numeric(ranked["book_size"], errors="coerce").fillna(0.0)
+    ranked["book_updates"] = pd.to_numeric(ranked["book_updates"], errors="coerce").fillna(0.0)
+    ranked = ranked[(ranked["book_updates"] > 0) & (ranked["volume_clob"] >= MIN_VOLUME_CLOB)]
+    if ranked.empty:
+        return ranked
+    ranked["volume_pct"] = ranked["volume_clob"].rank(method="average", pct=True)
+    ranked["book_pct"] = ranked["book_size"].rank(method="average", pct=True)
+    ranked["balance"] = ranked[["volume_pct", "book_pct"]].min(axis=1)
+    return ranked.sort_values(
+        ["balance", "volume_clob", "book_size"],
+        ascending=[False, False, False],
+    )
+
+
 def rank_game_winners(games, activity, count, side_markets):
-    """Keep the game winners with the most posted size in the order book."""
+    """Keep game winners that are high on both matched volume and posted size."""
     if games is None or games.empty or activity is None or activity.empty:
         return []
     tokens = moneyline_tokens(games)
     ranked = tokens.merge(activity, on=["condition_id", "asset_id"], how="inner")
-    ranked = ranked[ranked["book_updates"] > 0]
+    volumes = games[["slug", "volume_clob"]].drop_duplicates("slug")
+    ranked = ranked.merge(volumes, on="slug", how="left")
+    with_book = ranked[ranked["book_updates"] > 0]
+    print(f"{len(with_book)} game winners appeared in the order book.", flush=True)
+    ranked = balance_ranks(with_book)
+    print(
+        f"{len(ranked)} of them have matched volume of at least {MIN_VOLUME_CLOB:,.0f}.",
+        flush=True,
+    )
     if ranked.empty:
         return []
-    ranked = ranked.sort_values(["book_size", "book_updates"], ascending=[False, False])
     chosen = ranked.head(count)
     by_slug = games.set_index("slug", drop=False)
     selected = []
@@ -499,6 +539,7 @@ def rank_game_winners(games, activity, count, side_markets):
         row = row.copy()
         row["book_size"] = float(hit["book_size"])
         row["book_updates"] = int(hit["book_updates"])
+        row["balance"] = float(hit["balance"])
         asset_id, first = token_for(row, row["away"])
         name = str(list(row["outcomes"])[0])
         spreads, total = side_markets_for(side_markets, row["slug"], name)
@@ -511,22 +552,27 @@ def rank_game_winners(games, activity, count, side_markets):
             flush=True,
         )
     if len(selected) < count:
-        print(f"Found {len(selected)} game winners in the order book.", flush=True)
+        print(
+            f"Found {len(selected)} game winners with both a book and matched volume of at least {MIN_VOLUME_CLOB:,.0f}.",
+            flush=True,
+        )
     return selected
 
 
 def select_volume(duck, games, count, side_markets, activity=None):
-    """Game winners ranked by posted size in the hours around tip.
+    """Game winners that are high on both matched volume and posted size.
 
     `duck` is unused. The search opens its own connection and reads each
     distinct hour once. Markets that never appear are left out, including
-    ones with a large stored volume_clob.
+    ones with a large stored volume_clob. Markets under MIN_VOLUME_CLOB
+    are left out even when the book is busy.
     """
     del duck
     if activity is None:
         activity = discover_activity(moneyline_tokens(games))
     print(
-        f"Keeping up to {count} game winners with the most posted size in those hours.",
+        f"Keeping up to {count} game winners with matched volume of at least {MIN_VOLUME_CLOB:,.0f} "
+        "and a high posted size.",
         flush=True,
     )
     return rank_game_winners(games, activity, count, side_markets)
@@ -543,9 +589,10 @@ def select_games(duck, games, side_markets, find_text):
     selected = select_volume(duck, games, count, side_markets)
     if not selected:
         raise SystemExit(
-            "No game-winner token appeared in the order book around its listed tip. Nothing was charted."
+            "No game winner had both an order book and matched volume of at least "
+            f"{MIN_VOLUME_CLOB:,.0f}. Nothing was charted."
         )
-    return selected, f"top {len(selected)} by posted size in the order book"
+    return selected, f"top {len(selected)} NBA games by matched volume and posted size"
 
 
 def parse_stats(text):
@@ -723,26 +770,37 @@ def prop_tokens(props):
 
 
 def rank_props(props, activity, each, stats):
-    """For each stat, keep the lines with the most posted size in the order book.
+    """For each stat, keep lines that are high on both matched volume and posted size.
 
-    When one player has several numbers in the same game, the line with the
-    most posted size is the one that is charted.
+    When one player has several numbers in the same game, the charted line is
+    the one with the higher balance score. A line under MIN_VOLUME_CLOB is
+    left out even if its book is busy.
     """
     if props is None or props.empty or activity is None or activity.empty:
         return []
     tokens = prop_tokens(props)
     ranked = tokens.merge(activity, on=["condition_id", "asset_id"], how="inner")
-    ranked = ranked[ranked["book_updates"] > 0]
-    if ranked.empty:
+    with_book = ranked[ranked["book_updates"] > 0]
+    if with_book.empty:
         return []
     details = props.drop(columns=[column for column in ("condition_id", "asset_id", "tip") if column in props.columns])
-    ranked = ranked.merge(details, on="slug", how="left")
-    ranked = ranked.sort_values(["book_size", "book_updates"], ascending=[False, False])
+    ranked = with_book.merge(details, on="slug", how="left")
+    print(f"{len(ranked)} prop lines appeared in the order book.", flush=True)
+    ranked = balance_ranks(ranked)
+    print(
+        f"{len(ranked)} of them have matched volume of at least {MIN_VOLUME_CLOB:,.0f}.",
+        flush=True,
+    )
+    if ranked.empty:
+        return []
     ranked = ranked.drop_duplicates(["stat", "game_slug", "player_slug"], keep="first")
     selected = []
     for stat in stats:
         part = ranked[ranked["stat"] == stat]
-        print(f"{stat}: {len(part)} players appeared in the order book. Keeping {min(each, len(part))}.", flush=True)
+        print(
+            f"{stat}: {len(part)} players cleared both bars. Keeping {min(each, len(part))}.",
+            flush=True,
+        )
         kept = 0
         for _, row in part.head(each).iterrows():
             kept += 1
@@ -755,12 +813,15 @@ def rank_props(props, activity, each, stats):
                 flush=True,
             )
         if kept < each:
-            print(f"Found {kept} {stat} markets in the order book.", flush=True)
+            print(
+                f"Found {kept} {stat} markets with both a book and matched volume of at least {MIN_VOLUME_CLOB:,.0f}.",
+                flush=True,
+            )
     return selected
 
 
 def select_props(duck, props, each, stats, activity=None):
-    """Keep `each` markets per stat, ranked by posted size in the order book."""
+    """Keep `each` markets per stat that are high on both matched volume and posted size."""
     del duck
     if props is None or props.empty:
         return [], f"{each} each of {', '.join(stats)}"
@@ -1510,6 +1571,8 @@ def analyze(find_text="top10"):
         "led_score_n",
         "book_size",
         "book_updates",
+        "volume_clob",
+        "balance",
         "won",
     ])
 
@@ -1526,7 +1589,10 @@ def analyze_props(each, stats):
     selected, CHART_SUBJECT = select_props(duck, props, each, stats)
     duck.close()
     if not selected:
-        raise SystemExit("No prop market had an order book in the probed hours. Nothing was charted.")
+        raise SystemExit(
+            "No prop line had both an order book and matched volume of at least "
+            f"{MIN_VOLUME_CLOB:,.0f}. Nothing was charted."
+        )
     ACTIVE_PANELS = set_panels(selected)
     book, large_book = download_book(selected)
 
@@ -1677,6 +1743,8 @@ def analyze_props(each, stats):
         "led_score_n",
         "book_size",
         "book_updates",
+        "volume_clob",
+        "balance",
         "won",
     ])
 
@@ -1728,9 +1796,10 @@ SHARED_COLUMN_DOCS = {
     ("*", "large_n"): "Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed.",
     ("*", "followed_n"): "How many of those large sizes were followed by a mid move of at least 0.03 in the same direction over the next 30 minutes. A buy has to move the mid up. A sell has to move it down.",
     ("*", "led_score_n"): "How many large sizes both followed the price and arrived at least 15 seconds after the previous event and within 2 minutes before the next one.",
-    ("*", "book_size"): "Sum of posted size (size greater than 0) for the charted token in the hour before tip, the tip hour, and the hour after. This is the ranking key for --find topN and --find props. It is not matched trade volume and it is not volume_clob.",
+    ("*", "book_size"): "Sum of posted size (size greater than 0) for the charted token in the hour before tip, the tip hour, and the hour after. Posted size is the offer traffic in the book. It is not matched trade volume.",
     ("*", "book_updates"): "How many of those posted-size rows the charted token had in those three hours.",
-    ("*", "volume_clob"): "Stored lifetime CLOB volume of this contract. It is a snapshot from the markets table, not a sum over the game, and it is not the ranking key.",
+    ("*", "balance"): "Lower of this market's matched-volume percentile and its posted-size percentile, among NBA markets that have an order book and volume_clob of at least 1,000. Panels are sorted by this, highest first, so both numbers have to be high.",
+    ("*", "volume_clob"): "Stored lifetime matched CLOB volume of this contract, in dollars. It is a snapshot from the markets table. A market under 1,000 is left out of the charts.",
     ("*", "score_source"): "ESPN event id, written as espn:<id>.",
     ("*", "note"): "Why a row has no price path or no ESPN result. Blank when both were found.",
     ("*", "bin"): "Start of the 5-minute window, in UTC.",
@@ -2376,7 +2445,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--find",
         default="top10",
-        help="topN or propsN. The default, top10, keeps the 10 NBA game winners with the most posted size in the order book. props5 keeps 5 points, 5 assists, and 5 rebounds markets the same way. No team filter. volume_clob is stored, not used to choose.",
+        help="topN or propsN. The default, top10, keeps NBA game winners that have matched volume of at least 1,000 and a busy order book, ranked so both are high. props5 does the same for points, assists, and rebounds. No team filter.",
     )
     parser.add_argument(
         "--each",

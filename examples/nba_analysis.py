@@ -1244,11 +1244,53 @@ def prop_bucket(stat, edge):
     return "competitive"
 
 
+def zero_when_box_is_zero(path, final):
+    """Keep a finished zero on the chart instead of leaving the running stat blank.
+
+    No rebound plays means the running total never moves. If the box score is
+    also zero, the in-game value is 0, not the combined points of the game.
+    """
+    if path is None or path.empty or final is None or "stat_value" not in path:
+        return path
+    try:
+        finished = float(final)
+    except (TypeError, ValueError):
+        return path
+    if finished != 0 or path["stat_value"].notna().any():
+        return path
+    path = path.copy()
+    live = pd.to_numeric(path["hours_from_tip"], errors="coerce") >= 0
+    path.loc[live, "stat_value"] = 0
+    return path
+
+
+def stat_axis_label(code):
+    labels = {
+        "points": "Points",
+        "assists": "Assists",
+        "rebounds": "Rebounds",
+        "threes": "Threes made",
+        "steals": "Steals",
+        "blocks": "Blocks",
+    }
+    return labels.get(str(code or ""), "Player stat")
+
+
+def prop_stat_limit(line, stat, final):
+    """Right-axis top for a player stat. The game score is not part of this scale."""
+    candidates = [float(line or 0)]
+    if stat is not None and stat.notna().any():
+        candidates.append(float(stat.max()))
+    if final is not None:
+        candidates.append(float(final))
+    return max(max(candidates) + 2, 2)
+
+
 def attach_game_clock(path, plays):
     """Home score, away score, and their sum on each in-game bin.
 
-    A prop chart has no 'charted team', so the game total is what lines up
-    with the Over price when the player's own running stat is missing.
+    These columns stay in the CSV. The prop chart does not draw the sum:
+    a 200-point game would hide a 3.5 rebound line.
     """
     if path is None or path.empty or plays is None or plays.empty:
         path = path.copy() if path is not None else pd.DataFrame()
@@ -1777,12 +1819,13 @@ def analyze_props(each, stats):
                 }
             )
         if not path.empty:
-            plot_path = path.copy()
+            plot_path = zero_when_box_is_zero(path, final).copy()
             plot_path["team"] = item["name"]
             plot_path["rank"] = item["rank"]
             plot_path["label"] = label
             plot_path["bucket"] = summary["game_bucket"]
             plot_path["final_stat"] = final
+            plot_path["stat"] = item["stat"]
             paths.append(plot_path)
         if not large_book.empty:
             mine_orders = large_book[
@@ -1933,12 +1976,12 @@ PROP_COLUMN_DOCS = {
     ("summary.csv", "final_stat"): "ESPN box-score total for this stat. Threes are made three-pointers.",
     ("summary.csv", "espn_margin"): "final_stat minus the posted number. Positive means the player finished over.",
     ("summary.csv", "game_bucket"): "For points, close means the absolute gap is 2 or less and blowout means 6 or more. For assists, rebounds, threes, steals, and blocks, close is 1 or less and blowout is 3 or more.",
-    ("price_paths.csv", "stat_value"): "Player's running stat from the ESPN play-by-play. After tip it stays 0 until the first recorded increase. Blank before tip, and blank for the whole game when the play text never names this player.",
+    ("price_paths.csv", "stat_value"): "Player's running stat from the ESPN play-by-play. After tip it stays 0 until the first recorded increase. A box score of 0 stays 0 for the whole game. Blank before tip, and blank for the whole game when the box score is positive but the play text never names this player.",
     ("price_paths.csv", "prop_line"): "Posted over/under number, repeated on every bin. Drawn as the dashed line.",
     ("price_paths.csv", "final_stat"): "ESPN box-score total, repeated on every bin. Drawn as the dotted line.",
     ("price_paths.csv", "home_score"): "Home team's score at this bin. Blank before tip.",
     ("price_paths.csv", "away_score"): "Away team's score at this bin. Blank before tip.",
-    ("price_paths.csv", "game_points"): "Home score plus away score. Drawn on price_vs_score.png when the player's running stat is missing.",
+    ("price_paths.csv", "game_points"): "Home score plus away score at this bin. This is the game total, often near 200, and it is not the player's stat. price_vs_score.png does not draw it.",
     ("price_paths.csv", "spread_mid"): "Mid of the next most traded line for the same player, stat, and game.",
     ("alternate_spreads.csv", "stat"): "Stat family of this line.",
     ("alternate_spreads.csv", "line"): "Posted over/under number.",
@@ -2042,7 +2085,12 @@ def panels_from_summary(summary):
         record = ""
         if "record" in summary.columns and pd.notna(row["record"]):
             record = str(row["record"])
-        panels.append({"rank": int(row["rank"]), "name": str(row["team"]), "record": record})
+        code = ""
+        if "stat" in summary.columns and pd.notna(row["stat"]):
+            code = str(row["stat"])
+        elif "code" in summary.columns and pd.notna(row["code"]):
+            code = str(row["code"])
+        panels.append({"rank": int(row["rank"]), "name": str(row["team"]), "record": record, "code": code})
     return panels
 
 
@@ -2297,30 +2345,39 @@ def plot_price_vs_score(paths):
         if CHART_KIND == "prop":
             twin = axis.twinx()
             stat = pd.to_numeric(frame["stat_value"], errors="coerce") if "stat_value" in frame else pd.Series(dtype=float)
-            points = pd.to_numeric(frame["game_points"], errors="coerce") if "game_points" in frame else pd.Series(dtype=float)
             finals = pd.to_numeric(frame["final_stat"], errors="coerce") if "final_stat" in frame else pd.Series(dtype=float)
             posted = pd.to_numeric(frame["prop_line"], errors="coerce") if "prop_line" in frame else pd.Series(dtype=float)
             line = float(posted.dropna().iloc[0]) if posted.notna().any() else 0.0
             final = float(finals.dropna().iloc[0]) if finals.notna().any() else None
+            # A saved run can still have a blank running stat and a box score of 0.
+            # Draw that as 0. Do not substitute the combined game score.
+            if not stat.notna().any() and final == 0:
+                live = pd.to_numeric(frame["hours_from_tip"], errors="coerce") >= 0
+                stat = pd.Series(float("nan"), index=frame.index)
+                stat.loc[live] = 0.0
+            code = panel.get("code") or ""
+            if not code and "stat" in frame.columns and frame["stat"].notna().any():
+                code = str(frame["stat"].dropna().iloc[0])
+            right_label = stat_axis_label(code)
             if stat.notna().any():
                 twin.plot(frame["hours_from_tip"], stat, color="#b04a4a", linewidth=1.2)
-                series_top = float(stat.max())
-                right_label = "Player stat"
-            elif points.notna().any():
-                twin.plot(frame["hours_from_tip"], points, color="#b04a4a", linewidth=1.2)
-                series_top = float(points.max())
-                right_label = "Game points"
             else:
-                series_top = 0.0
-                right_label = "Player stat"
+                axis.text(
+                    0.98,
+                    0.08,
+                    "Running total not in the play-by-play",
+                    ha="right",
+                    va="bottom",
+                    fontsize=7,
+                    color="#666666",
+                    transform=axis.transAxes,
+                )
             if line:
                 twin.axhline(line, color="#b04a4a", linewidth=0.8, linestyle="--")
             if final is not None:
                 twin.axhline(final, color="#2f7d4a", linewidth=0.8, linestyle=":")
-            top = max(line, series_top, 0 if final is None else final) + 2
-            twin.set_ylim(0, max(top, 2))
-            if (index + 1) % cols == 0:
-                twin.set_ylabel(right_label)
+            twin.set_ylim(0, prop_stat_limit(line, stat, final))
+            twin.set_ylabel(right_label, fontsize=8)
         else:
             scores = frame["score_margin"].dropna() if "score_margin" in frame else pd.Series(dtype=float)
             if not scores.empty:

@@ -78,6 +78,8 @@ MIN_VOLUME_CLOB = 1000
 MAX_PROP_EACH = 10
 DEFAULT_PROP_EACH = 4
 LARGE_SIZE_MULT = 10
+# A buy at 0 locks no cash. A sell at 1 locks none on the other side.
+# Either can be posted in any size, so neither is evidence of a large real order.
 FOLLOW_MOVE = 0.03
 PROP_STATS = ("points", "assists", "rebounds", "threes", "steals", "blocks")
 STAT_SHORT = {
@@ -280,11 +282,29 @@ def read_hour(duck, moment, pairs):
     return frame
 
 
+def cash_backed_price(column="price"):
+    """SQL test for a price that actually ties up money. 0 and 1 do not."""
+    return f"{column} > 0 AND {column} < 1"
+
+
+def drop_boundary_orders(frame):
+    """Remove posted sizes at 0 and at 1.
+
+    Those two prices put no cash at risk, so a huge size there is not an
+    outlier among orders that can be filled for real money.
+    """
+    if frame is None or frame.empty or "price" not in frame.columns:
+        return frame
+    price = pd.to_numeric(frame["price"], errors="coerce")
+    return frame.loc[price.gt(0) & price.lt(1)].copy()
+
+
 def read_hour_scan(duck, moment, pairs):
     """One read of an hourly file: five-minute quotes, plus unusually large sizes.
 
-    A large size is at least 10 times the median size on that token and side.
-    Size 0 is a removed level, so those rows are left out. The file is read once.
+    A large size is at least 10 times the median size on that token and side,
+    among prices strictly between 0 and 1. Size 0 is a removed level, so those
+    rows are left out. The file is read once.
     """
     empty_bins = pd.DataFrame(columns=["market", "asset_id", "bin", "best_bid", "best_ask"])
     empty_large = pd.DataFrame(columns=["ts_ms", "market", "asset_id", "side", "price", "size", "med_size"])
@@ -311,18 +331,20 @@ def read_hour_scan(duck, moment, pairs):
             FROM hour_hits
             GROUP BY 1, 2, 3
         """).fetchall()
+        real = cash_backed_price("price")
         large_rows = duck.execute(f"""
             WITH med AS (
                 SELECT market, asset_id, side, median(size) AS med_size
                 FROM hour_hits
-                WHERE focus = 1
+                WHERE focus = 1 AND {real}
                 GROUP BY 1, 2, 3
                 HAVING count(*) >= 20
             )
             SELECT h.ts_ms, h.market, h.asset_id, h.side, h.price, h.size, m.med_size
             FROM hour_hits h
             JOIN med m USING (market, asset_id, side)
-            WHERE h.focus = 1 AND h.size >= m.med_size * {LARGE_SIZE_MULT}
+            WHERE h.focus = 1 AND {cash_backed_price("h.price")}
+              AND h.size >= m.med_size * {LARGE_SIZE_MULT}
         """).fetchall()
     except Exception as error:
         print(f"  skip {hour_key(moment)}: {error.__class__.__name__}", flush=True)
@@ -1351,7 +1373,10 @@ def classify_orders(orders, path, plays, tip):
     ]
     if orders is None or orders.empty:
         return pd.DataFrame(columns=columns)
-    frame = orders.copy()
+    frame = drop_boundary_orders(orders)
+    if frame.empty:
+        return pd.DataFrame(columns=columns)
+    frame = frame.copy()
     frame["time"] = pd.to_datetime(frame["ts_ms"], unit="ms", utc=True)
     frame = dedupe_orders(frame).sort_values("time").reset_index(drop=True)
     frame["hours_from_tip"] = (frame["time"] - pd.Timestamp(tip)) / pd.Timedelta(hours=1)
@@ -1906,7 +1931,7 @@ SHARED_COLUMN_DOCS = {
     ("*", "minutes_to_decided"): "Minutes after tip when the mid first reaches 0.90 or 0.10. Blank if that never happens in the saved window.",
     ("*", "bid_ask_pregame"): "Mean of ask minus bid over the hour before tip.",
     ("*", "bid_ask_live"): "Mean of ask minus bid over the first 2.5 hours after tip.",
-    ("*", "large_n"): "Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed.",
+    ("*", "large_n"): "Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed. The median and this count both ignore prices at 0 and 1, because a buy at 0 and a sell at 1 lock no cash.",
     ("*", "followed_n"): "How many of those large sizes were followed by a mid move of at least 0.03 in the same direction over the next 30 minutes. A buy has to move the mid up. A sell has to move it down.",
     ("*", "led_score_n"): "How many large sizes both followed the price and arrived at least 15 seconds after the previous event and within 2 minutes before the next one.",
     ("*", "book_size"): "Sum of posted size (size greater than 0) for the charted token in the hour before tip, the tip hour, and the hour after. Posted size is the offer traffic in the book. It is not matched trade volume.",
@@ -1928,9 +1953,9 @@ SHARED_COLUMN_DOCS = {
     ("*", "title"): "Market title from the markets table.",
     ("*", "time"): "UTC time of the book update.",
     ("*", "side"): "BUY is a posted bid. SELL is a posted ask. This is a resting size, not a matched trade, and it has no wallet.",
-    ("*", "price"): "Price of that posted size, on the 0 to 1 contract scale.",
+    ("*", "price"): "Price of that posted size, on the 0 to 1 contract scale. Rows at exactly 0 or exactly 1 are left out of large_orders.csv.",
     ("*", "size"): "Posted size. A size of 0 means the level was removed, and those rows are left out because a cancel and a fill look the same.",
-    ("*", "med_size"): "Median posted size on this token and side in that clock hour.",
+    ("*", "med_size"): "Median posted size on this token and side in that clock hour, using prices strictly between 0 and 1.",
     ("*", "size_ratio"): "size divided by med_size. A row is kept when this is at least 10 and that side had at least 20 updates in the hour.",
     ("*", "mid_at"): "Latest 5-minute mid at or before this update.",
     ("*", "mid_later"): "Next 5-minute mid at least 30 minutes after this update.",
@@ -2028,7 +2053,7 @@ def write_data_dictionary(files):
     if "alternate_spreads.csv" not in present:
         missing.append("`alternate_spreads.csv` is absent because no extra line was found.")
     if "large_orders.csv" not in present:
-        missing.append("`large_orders.csv` is absent because no posted size was at least 10 times the median.")
+        missing.append("`large_orders.csv` is absent because no posted size between 0 and 1 was at least 10 times the median.")
     if missing:
         lines.append("## Files not written")
         lines.append("")
@@ -2073,7 +2098,7 @@ def finish_run(summaries, paths, alternates, results, order_frames, columns):
     plot_calibration(summary_frame)
     plot_spread(summary_frame)
     plot_large_orders(paths, orders)
-    plot_large_order_counts(summary_frame)
+    plot_large_order_counts(summary_frame, orders)
     show = [column for column in columns if column in summary_frame.columns]
     print(summary_frame[show].to_string(index=False))
     print(f"Wrote {OUTPUT}")
@@ -2129,7 +2154,7 @@ def redraw():
     orders_path = OUTPUT / "large_orders.csv"
     orders = pd.read_csv(orders_path) if orders_path.exists() else pd.DataFrame()
     plot_large_orders(paths, orders)
-    plot_large_order_counts(summary)
+    plot_large_order_counts(summary, orders)
     documented = []
     for name in ("summary.csv", "price_paths.csv", "alternate_spreads.csv", "game_results.csv", "large_orders.csv"):
         path = OUTPUT / name
@@ -2476,17 +2501,55 @@ def plot_alternate_spreads(frame):
     finish_grid(fig, axes, count, cols, x_label, y_label, alt_title, "alternate_spreads.png")
 
 
+def flag_true(series):
+    return series.map(lambda value: value is True or str(value).strip().lower() in {"true", "1"})
+
+
+def counts_without_boundary(summary, orders):
+    """Bar-chart counts after prices at 0 and 1 are removed.
+
+    A saved summary still has the old totals. The order rows are enough to
+    recount, so a redraw matches the scatter without reading the hourly files.
+    """
+    if summary is None or summary.empty or orders is None or orders.empty or "price" not in orders.columns:
+        return summary
+    if "rank" not in orders.columns or "rank" not in summary.columns:
+        return summary
+    frame = drop_boundary_orders(orders)
+    summary = summary.copy()
+    summary["rank"] = pd.to_numeric(summary["rank"], errors="coerce")
+    summary["large_n"] = 0
+    summary["followed_n"] = 0
+    summary["led_score_n"] = 0
+    if frame.empty:
+        return summary
+    frame = frame.copy()
+    frame["rank"] = pd.to_numeric(frame["rank"], errors="coerce")
+    frame["price_followed"] = flag_true(frame["price_followed"]) if "price_followed" in frame else False
+    frame["stands_out"] = flag_true(frame["stands_out"]) if "stands_out" in frame else False
+    counts = frame.groupby("rank", sort=False).agg(
+        large_n=("price", "size"),
+        followed_n=("price_followed", "sum"),
+        led_score_n=("stands_out", "sum"),
+    )
+    summary = summary.drop(columns=["large_n", "followed_n", "led_score_n"])
+    summary = summary.merge(counts, on="rank", how="left")
+    for column in ("large_n", "followed_n", "led_score_n"):
+        summary[column] = pd.to_numeric(summary[column], errors="coerce").fillna(0)
+    return summary
+
+
 def plot_large_orders(paths, orders):
     fig, axes, count, cols = grid_for()
     by_rank = paths_by_rank(paths)
     grouped = {}
     if orders is not None and not orders.empty:
-        orders = orders.copy()
+        orders = drop_boundary_orders(orders)
         for column in ("hours_from_tip", "price", "size_ratio"):
             if column in orders:
                 orders[column] = pd.to_numeric(orders[column], errors="coerce")
         if "stands_out" in orders:
-            orders["stands_out"] = orders["stands_out"].map(lambda value: str(value).strip().lower() in {"true", "1"} or value is True)
+            orders["stands_out"] = flag_true(orders["stands_out"])
         grouped = {int(rank): part for rank, part in orders.groupby("rank")}
     labeled = False
     legend_axis = None
@@ -2532,7 +2595,8 @@ def plot_large_orders(paths, orders):
     )
 
 
-def plot_large_order_counts(summary):
+def plot_large_order_counts(summary, orders=None):
+    summary = counts_without_boundary(summary, orders)
     columns = ["team", "large_n", "followed_n", "led_score_n"]
     if summary is None or summary.empty or not set(columns).issubset(summary.columns):
         fig, axis = plt.subplots(figsize=(8, 4))
@@ -2547,7 +2611,7 @@ def plot_large_order_counts(summary):
     frame = frame[frame["large_n"] > 0]
     fig, axis = plt.subplots(figsize=(max(10, 0.55 * max(len(frame), 1)), 5))
     if frame.empty:
-        axis.text(0.5, 0.5, "No order was at least 10 times the median size", ha="center")
+        axis.text(0.5, 0.5, "No order between 0 and 1 was at least 10 times the median size", ha="center")
     else:
         positions = list(range(len(frame)))
         width = 0.25

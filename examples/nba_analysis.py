@@ -1,15 +1,13 @@
-"""Price history for NBA game-winner markets.
+"""Price history for NBA markets that already have an order book.
 
-Two selections are built in select_games:
-
-    python examples/nba_analysis.py --find power
+    python examples/nba_analysis.py
     python examples/nba_analysis.py --find top20
 
-`power` is the NBA.com Week 2 power rankings from October 26, 2026, one
-completed game per team. `top20` (or any `topN`) reads the hourly order-book
-files around every completed NBA tip and keeps the N game winners with the
-most posted size in those files. A market that never appears there is not
-charted, whatever its stored volume_clob says.
+The default, `top10`, reads the hourly order-book files around every
+completed NBA tip and keeps the 10 game winners with the most posted size.
+Any `topN` from 1 to 40 does the same. There is no team list. A market that
+never appears in those files is not charted, whatever its stored
+volume_clob says.
 
 `props5` (or `--find props --each 5`) does the same charts for player
 over/under markets. It reads those same tip hours and keeps the five points
@@ -70,6 +68,7 @@ IN_GAME_HOURS = 2.5
 VARIANCE_BINS = 6
 MAX_SPREADS = 4
 MAX_FIND = 40
+DEFAULT_TOP = 10
 MAX_PROP_EACH = 10
 DEFAULT_PROP_EACH = 4
 LARGE_SIZE_MULT = 10
@@ -110,21 +109,8 @@ ESPN_ABBREV = {
     "wsh": "WSH",
 }
 
-# NBA.com Power Rankings, Week 2, October 26, 2026.
-TOP_TEAMS = [
-    {"rank": 1, "code": "okc", "name": "Thunder", "record": "3-0"},
-    {"rank": 2, "code": "det", "name": "Pistons", "record": "3-0"},
-    {"rank": 3, "code": "min", "name": "Timberwolves", "record": "3-0"},
-    {"rank": 4, "code": "hou", "name": "Rockets", "record": "3-0"},
-    {"rank": 5, "code": "phi", "name": "76ers", "record": "3-1"},
-    {"rank": 6, "code": "sas", "name": "Spurs", "record": "1-2"},
-    {"rank": 7, "code": "lal", "name": "Lakers", "record": "3-0"},
-    {"rank": 8, "code": "bos", "name": "Celtics", "record": "1-1"},
-    {"rank": 9, "code": "tor", "name": "Raptors", "record": "2-1"},
-    {"rank": 10, "code": "nyk", "name": "Knicks", "record": "0-3"},
-]
-ACTIVE_PANELS = TOP_TEAMS
-CHART_SUBJECT = "NBA.com Week 2 power rankings"
+ACTIVE_PANELS = []
+CHART_SUBJECT = "NBA game winners by posted size"
 CHART_KIND = "game"
 
 
@@ -187,13 +173,6 @@ def load_side_markets(pg):
     )
     frame["volume_clob"] = frame["volume_clob"].astype(float)
     return frame
-
-
-def team_games(games, code):
-    mine = games[(games["away"] == code) | (games["home"] == code)].copy()
-    mine["volume_clob"] = mine["volume_clob"].fillna(0)
-    mine["liquid"] = mine["volume_clob"] >= 50
-    return mine.sort_values(["liquid", "tip"], ascending=[False, False])
 
 
 def token_for(row, code):
@@ -438,43 +417,21 @@ def book_fields(game):
     return found
 
 
-def has_book(duck, tip, condition_id, asset_id, checks=(0, 1, 3)):
-    for hours_back in checks:
-        probe = (tip - timedelta(hours=hours_back)).replace(minute=0, second=0, microsecond=0)
-        frame = read_hour(duck, probe, [(condition_id, asset_id)])
-        if not frame.empty:
-            return True
-    return False
-
-
-def choose_game(duck, games, code, confirmed):
-    if games.empty:
-        return None, None, None
-    known = games[games["slug"].isin(confirmed)]
-    if not known.empty:
-        row = known.iloc[0]
-        asset_id, first = token_for(row, code)
-        print(f"  reuse {row['slug']}", flush=True)
-        return row, asset_id, first
-    for _, row in games.iterrows():
-        asset_id, first = token_for(row, code)
-        print(f"  probe {row['slug']}", flush=True)
-        if has_book(duck, row["tip"], row["condition_id"], asset_id):
-            confirmed.add(row["slug"])
-            return row, asset_id, first
-    return None, None, None
-
-
 def parse_find(text):
     """Turn --find into a kind and a count.
 
-    power, topN, props, and propsN are accepted. propsN sets how many markets
-    to keep for each stat. A bare 'props' leaves the count unset so --each
-    or the default can fill it in.
+    topN, props, and propsN are accepted. The default is the busiest NBA
+    game winners, with no team filter. propsN sets how many markets to keep
+    for each stat. A bare 'props' leaves the count unset so --each or the
+    default can fill it in.
     """
-    value = (text or "power").strip().lower()
+    value = (text or f"top{DEFAULT_TOP}").strip().lower()
     if value == "power":
-        return "power", len(TOP_TEAMS)
+        raise SystemExit(
+            "Team power rankings are no longer used. "
+            "Run python examples/nba_analysis.py for the busiest NBA game winners, "
+            "or --find props5 for player props."
+        )
     if value == "props":
         return "props", None
     match = re.fullmatch(r"props(\d+)", value)
@@ -485,7 +442,7 @@ def parse_find(text):
         return "props", count
     match = re.fullmatch(r"top(\d+)", value)
     if match is None:
-        raise SystemExit("--find must be 'power', 'topN', or 'propsN', for example --find props5")
+        raise SystemExit("--find must be 'topN' or 'propsN', for example --find top10 or --find props5")
     count = int(match.group(1))
     if not 1 <= count <= MAX_FIND:
         raise SystemExit(f"--find topN must be from 1 to {MAX_FIND}")
@@ -504,24 +461,6 @@ def pack_game(rank, name, code, record, row, asset_id, first, spreads, total):
         "spreads": spreads,
         "total": total,
     }
-
-
-def select_power(duck, games, side_markets):
-    """One completed game for each team in the Week 2 power rankings."""
-    selected = []
-    confirmed = set()
-    for team in TOP_TEAMS:
-        print(f"{team['rank']}. {team['name']}", flush=True)
-        candidates = team_games(games, team["code"])
-        row, asset_id, first = choose_game(duck, candidates, team["code"], confirmed)
-        if row is None:
-            selected.append({**team, "game": None, "spreads": [], "total": None})
-            print("  no order-book game", flush=True)
-            continue
-        spreads, total = side_markets_for(side_markets, row["slug"], team["name"])
-        selected.append(pack_game(team["rank"], team["name"], team["code"], team["record"], row, asset_id, first, spreads, total))
-        print(f"  using {row['slug']}", flush=True)
-    return selected
 
 
 def moneyline_tokens(games):
@@ -594,14 +533,11 @@ def select_volume(duck, games, count, side_markets, activity=None):
 
 
 def select_games(duck, games, side_markets, find_text):
-    """Choose the games for this run.
+    """Choose NBA game winners for this run.
 
-    find_text is 'power' or 'topN'. Returns the selected rows and a short
-    chart subtitle.
+    find_text is 'topN'. Returns the selected rows and a short chart subtitle.
     """
     kind, count = parse_find(find_text)
-    if kind == "power":
-        return select_power(duck, games, side_markets), "NBA.com Week 2 power rankings"
     if kind != "volume":
         raise SystemExit("Player over/under markets use --find props, for example --find props5.")
     selected = select_volume(duck, games, count, side_markets)
@@ -1352,7 +1288,7 @@ def set_panels(selected):
     ]
 
 
-def analyze(find_text="power"):
+def analyze(find_text="top10"):
     global ACTIVE_PANELS, CHART_SUBJECT, CHART_KIND
     CHART_KIND = "game"
     OUTPUT.mkdir(parents=True, exist_ok=True)
@@ -1406,7 +1342,7 @@ def analyze(find_text="power"):
             "final_points": None,
             "total_line": None,
             "total_pregame": None,
-            "note": "Every completed game-winner market for this team was checked. None of those hours contain its token.",
+            "note": "This market had no order-book rows in the hours around its listed tip.",
         }
         if item["game"] is None:
             summaries.append(summary)
@@ -1772,7 +1708,7 @@ SHARED_COLUMN_DOCS = {
     ("*", "team"): "Name printed on the panel.",
     ("*", "label"): "Title drawn on the panel.",
     ("*", "code"): "Three-letter team code from the slug.",
-    ("*", "record"): "Win-loss record from the Week 2 power ranking. Blank when the panels were chosen from the order book.",
+    ("*", "record"): "Blank. Panels are NBA markets ranked from the order book, not a team ranking.",
     ("*", "game"): "Market slug of the charted contract.",
     ("*", "opponent"): "The other team.",
     ("*", "opponent_code"): "Three-letter code of the other team.",
@@ -2439,8 +2375,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="NBA price paths from the class order-book files.")
     parser.add_argument(
         "--find",
-        default="power",
-        help="power, topN, or propsN. top20 keeps the 20 game winners with the most posted size in the order book around tip. props5 keeps 5 points, 5 assists, and 5 rebounds markets the same way. volume_clob is stored, not used to choose.",
+        default="top10",
+        help="topN or propsN. The default, top10, keeps the 10 NBA game winners with the most posted size in the order book. props5 keeps 5 points, 5 assists, and 5 rebounds markets the same way. No team filter. volume_clob is stored, not used to choose.",
     )
     parser.add_argument(
         "--each",

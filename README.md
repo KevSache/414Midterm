@@ -192,14 +192,14 @@ print(con.execute("SELECT slug, title, best_bid, best_ask FROM pm.markets LIMIT 
 | `examples/supabase_psycopg2.py` | `markets` sample via psycopg2 |
 | `examples/supabase_pandas.py` | Same sample via pandas |
 | `examples/supabase_duckdb.py` | Same sample via DuckDB `ATTACH` |
-| `examples/nba_analysis.py` | Price path, variance, resolution, and large-order charts. `--find power` uses the top 10 power rankings. `--find top20` keeps the 20 game winners with the most posted size in the order book. `--find props5` does the same charts for player points, assists, and rebounds |
+| `examples/nba_analysis.py` | Price path, variance, resolution, and large-order charts for NBA markets that already have an order book. The default keeps the 10 busiest game winners. `--find props5` does the same charts for player points, assists, and rebounds |
 
-## NBA top 10
+## NBA game winners
 
-`examples/nba_analysis.py` charts one completed game-winner market per panel. The slug equals the event slug, so the two outcomes are the two teams. `--find` chooses which games:
+`examples/nba_analysis.py` charts completed NBA game-winner markets. It does not start from a team list. The slug equals the event slug, so the two outcomes are the two teams, and the price on each panel is the away team.
 
 ```bash
-python examples/nba_analysis.py --find power
+python examples/nba_analysis.py
 python examples/nba_analysis.py --find top20
 python examples/nba_analysis.py --find props5
 python examples/nba_analysis.py --find props --each 4 --stats points,assists,rebounds
@@ -207,9 +207,7 @@ python examples/nba_analysis.py --find props5 --plots-only
 python examples/nba_analysis.py --plots-only
 ```
 
-`--find power` is the default. It uses the NBA.com Week 2 power rankings published October 26, 2026, one game per team. A game already used for the opponent is reused. It still probes each team's candidates until one hourly file contains that token.
-
-`--find top20` does not sort by `volume_clob`. It reads the hourly order-book files around every completed NBA tip: the hour before, the tip hour, and the hour after. That is about 143 distinct files, each read once, including games whose stored volume is zero. It then keeps the 20 away-team tokens with the most posted size in those hours. Posted size is the sum of book rows with size greater than 0. It is not matched dollar volume, and it is not `volume_clob`. `volume_clob` is still written on the summary row so the two numbers can be compared. A market that never appears in those files is left out, including one with a huge stored volume and no price history. Any `topN` from 1 to 40 works the same way. The price on each panel is the away team, the first outcome. This search runs before the usual chart window, so `top5` takes longer than the old pass that only checked the highest `volume_clob` slugs. The chart pass still reads six hours before tip through three hours after, for the kept games only.
+The default is `--find top10`. It reads the hourly order-book files around every completed NBA tip: the hour before, the tip hour, and the hour after. That is about 143 distinct files, each read once, including games whose stored volume is zero. It then keeps the 10 away-team tokens with the most posted size in those hours. Posted size is the sum of book rows with size greater than 0. It is not matched dollar volume, and it is not `volume_clob`. `volume_clob` is still written on the summary row so the two numbers can be compared. A market that never appears in those files is left out, including one with a huge stored volume and no price history. Any `topN` from 1 to 40 works the same way. This search runs before the usual chart window. The chart pass still reads six hours before tip through three hours after, for the kept games only.
 
 `--plots-only` redraws the charts from the CSVs already in `outputs/nba/`. It does not download the hourly files. Use it when a run finished the download and then failed while drawing. It also writes `DATA_DICTIONARY.md` from the CSV headers already in that folder.
 
@@ -227,7 +225,7 @@ The run reads six hours before the listed tip through three hours after it. A bu
 | `bid_ask_width.png` | Ask minus bid, every five minutes. |
 | `calibration.png` | Last mid before tip against the Polymarket resolution (won or lost). |
 | `moneyline_vs_spread.png` | That same pregame win price against the highest-volume spread. |
-| `summary.csv` | One row per team, including the variance scores, the ESPN margin, and the game total. |
+| `summary.csv` | One row per game, including the variance scores, the ESPN margin, and the game total. |
 | `price_paths.csv` | The five-minute rows behind the charts, including the variance score and the score margin. |
 | `game_results.csv` | ESPN score, quarter lines, and margin for each team that had an order book. |
 | `alternate_spreads.csv` | Pregame price of each alternate spread. |
@@ -255,7 +253,7 @@ For each requested stat the script reads the same three hours around every compl
 
 The price, variance, bid-ask gap, and large-order charts are the Over price. `price_vs_score.png` draws that price against the player's running stat, with a dashed line at the posted number. The final stat is the ESPN box score. `espn_margin` in the summary is the final stat minus the posted number. A points prop is "close" when that gap is 2 or less and a "blowout" when it is 6 or more. Assists, rebounds, threes, steals, and blocks use 1 and 3. On the large-order chart, a dark mark means the Over price then moved that way and the order came at least 15 seconds after the player's previous stat and within two minutes before the next one. There is still no wallet on the row.
 
-The class database does not store the point margin. `won` is the Polymarket resolution, and the score, quarter lines, and margin come from ESPN. `markets.best_bid` is the latest snapshot, not the history, so the price charts come from the Parquet files. `--find power` can still leave a team blank when none of that team's completed games appear in the probed hours. `--find topN` and `--find props` only keep markets whose token was in the order book.
+The class database does not store the point margin. `won` is the Polymarket resolution, and the score, quarter lines, and margin come from ESPN. `markets.best_bid` is the latest snapshot, not the history, so the price charts come from the Parquet files. A market is charted only when its token was in the order book.
 
 ## Update your local copy
 

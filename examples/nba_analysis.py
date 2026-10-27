@@ -78,8 +78,11 @@ MIN_VOLUME_CLOB = 1000
 MAX_PROP_EACH = 10
 DEFAULT_PROP_EACH = 4
 LARGE_SIZE_MULT = 10
-# A buy at 0 locks no cash. A sell at 1 locks none on the other side.
-# Either can be posted in any size, so neither is evidence of a large real order.
+# One cent and ninety-nine cents draw on the 0 and 1 lines. A buy that cheap,
+# or a sell that close to a dollar, can be posted in any size. Those rows are
+# left out of the large-order search. Five cents is far enough that a kept
+# mark is visibly off the axis.
+EDGE_PRICE = 0.05
 FOLLOW_MOVE = 0.03
 PROP_STATS = ("points", "assists", "rebounds", "threes", "steals", "blocks")
 STAT_SHORT = {
@@ -283,27 +286,27 @@ def read_hour(duck, moment, pairs):
 
 
 def cash_backed_price(column="price"):
-    """SQL test for a price that actually ties up money. 0 and 1 do not."""
-    return f"{column} > 0 AND {column} < 1"
+    """SQL test for a price more than five cents from 0 or 1."""
+    return f"{column} > {EDGE_PRICE} AND {column} < {1 - EDGE_PRICE}"
 
 
 def drop_boundary_orders(frame):
-    """Remove posted sizes at 0 and at 1.
+    """Remove posted sizes within five cents of 0 or 1.
 
-    Those two prices put no cash at risk, so a huge size there is not an
-    outlier among orders that can be filled for real money.
+    A one-cent bid and a ninety-nine-cent ask sit on the chart axis and can
+    be huge without much money at risk. They are not the outliers.
     """
     if frame is None or frame.empty or "price" not in frame.columns:
         return frame
     price = pd.to_numeric(frame["price"], errors="coerce")
-    return frame.loc[price.gt(0) & price.lt(1)].copy()
+    return frame.loc[price.gt(EDGE_PRICE) & price.lt(1 - EDGE_PRICE)].copy()
 
 
 def read_hour_scan(duck, moment, pairs):
     """One read of an hourly file: five-minute quotes, plus unusually large sizes.
 
     A large size is at least 10 times the median size on that token and side,
-    among prices strictly between 0 and 1. Size 0 is a removed level, so those
+    among prices more than five cents from 0 or 1. Size 0 is a removed level, so those
     rows are left out. The file is read once.
     """
     empty_bins = pd.DataFrame(columns=["market", "asset_id", "bin", "best_bid", "best_ask"])
@@ -1931,7 +1934,7 @@ SHARED_COLUMN_DOCS = {
     ("*", "minutes_to_decided"): "Minutes after tip when the mid first reaches 0.90 or 0.10. Blank if that never happens in the saved window.",
     ("*", "bid_ask_pregame"): "Mean of ask minus bid over the hour before tip.",
     ("*", "bid_ask_live"): "Mean of ask minus bid over the first 2.5 hours after tip.",
-    ("*", "large_n"): "Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed. The median and this count both ignore prices at 0 and 1, because a buy at 0 and a sell at 1 lock no cash.",
+    ("*", "large_n"): "Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed. The median and this count both ignore a price of 5 cents or less, or 95 cents or more. One-cent and ninety-nine-cent orders sit on the 0 and 1 lines and are not counted.",
     ("*", "followed_n"): "How many of those large sizes were followed by a mid move of at least 0.03 in the same direction over the next 30 minutes. A buy has to move the mid up. A sell has to move it down.",
     ("*", "led_score_n"): "How many large sizes both followed the price and arrived at least 15 seconds after the previous event and within 2 minutes before the next one.",
     ("*", "book_size"): "Sum of posted size (size greater than 0) for the charted token in the hour before tip, the tip hour, and the hour after. Posted size is the offer traffic in the book. It is not matched trade volume.",
@@ -1953,9 +1956,9 @@ SHARED_COLUMN_DOCS = {
     ("*", "title"): "Market title from the markets table.",
     ("*", "time"): "UTC time of the book update.",
     ("*", "side"): "BUY is a posted bid. SELL is a posted ask. This is a resting size, not a matched trade, and it has no wallet.",
-    ("*", "price"): "Price of that posted size, on the 0 to 1 contract scale. Rows at exactly 0 or exactly 1 are left out of large_orders.csv.",
+    ("*", "price"): "Price of that posted size, on the 0 to 1 contract scale. Rows at 5 cents or less, or at 95 cents or more, are left out of large_orders.csv.",
     ("*", "size"): "Posted size. A size of 0 means the level was removed, and those rows are left out because a cancel and a fill look the same.",
-    ("*", "med_size"): "Median posted size on this token and side in that clock hour, using prices strictly between 0 and 1.",
+    ("*", "med_size"): "Median posted size on this token and side in that clock hour, using prices more than five cents from 0 or 1.",
     ("*", "size_ratio"): "size divided by med_size. A row is kept when this is at least 10 and that side had at least 20 updates in the hour.",
     ("*", "mid_at"): "Latest 5-minute mid at or before this update.",
     ("*", "mid_later"): "Next 5-minute mid at least 30 minutes after this update.",
@@ -2053,7 +2056,7 @@ def write_data_dictionary(files):
     if "alternate_spreads.csv" not in present:
         missing.append("`alternate_spreads.csv` is absent because no extra line was found.")
     if "large_orders.csv" not in present:
-        missing.append("`large_orders.csv` is absent because no posted size between 0 and 1 was at least 10 times the median.")
+        missing.append("`large_orders.csv` is absent because no posted size more than five cents from 0 or 1 was at least 10 times the median.")
     if missing:
         lines.append("## Files not written")
         lines.append("")
@@ -2506,7 +2509,7 @@ def flag_true(series):
 
 
 def counts_without_boundary(summary, orders):
-    """Bar-chart counts after prices at 0 and 1 are removed.
+    """Bar-chart counts after prices within five cents of 0 or 1 are removed.
 
     A saved summary still has the old totals. The order rows are enough to
     recount, so a redraw matches the scatter without reading the hourly files.
@@ -2611,7 +2614,7 @@ def plot_large_order_counts(summary, orders=None):
     frame = frame[frame["large_n"] > 0]
     fig, axis = plt.subplots(figsize=(max(10, 0.55 * max(len(frame), 1)), 5))
     if frame.empty:
-        axis.text(0.5, 0.5, "No order between 0 and 1 was at least 10 times the median size", ha="center")
+        axis.text(0.5, 0.5, "No order more than 5 cents from 0 or 1 was at least 10 times the median size", ha="center")
     else:
         positions = list(range(len(frame)))
         width = 0.25

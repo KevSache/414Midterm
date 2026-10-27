@@ -746,10 +746,40 @@ def analyze():
     print(f"Wrote {OUTPUT}")
 
 
+def redraw():
+    summary_path = OUTPUT / "summary.csv"
+    if not summary_path.exists():
+        raise SystemExit(f"No saved table at {summary_path}. Run the script once without --plots-only.")
+    summary = pd.read_csv(summary_path)
+    if "won" in summary:
+        summary["won"] = summary["won"].map(
+            lambda value: value if isinstance(value, bool) or pd.isna(value) else str(value).strip().lower() == "true"
+        )
+    price_path = OUTPUT / "price_paths.csv"
+    paths = []
+    if price_path.exists():
+        prices = pd.read_csv(price_path)
+        for _, part in prices.groupby("rank", sort=True):
+            paths.append(part.reset_index(drop=True))
+    alternate_path = OUTPUT / "alternate_spreads.csv"
+    alternates = pd.read_csv(alternate_path) if alternate_path.exists() else pd.DataFrame()
+    plot_paths(paths)
+    plot_variance(summary)
+    plot_variance_paths(paths)
+    plot_variance_vs_margin(summary)
+    plot_price_vs_score(paths)
+    plot_market_paths(paths)
+    plot_bid_ask(paths)
+    plot_alternate_spreads(alternates)
+    plot_calibration(summary)
+    plot_spread(summary)
+    print(f"Rewrote charts in {OUTPUT}")
+
+
 def plot_paths(paths):
     fig, axes = plt.subplots(5, 2, figsize=(11, 14), sharex=True, sharey=True)
     axes = axes.ravel()
-    by_rank = {frame["rank"].iloc[0]: frame for frame in paths}
+    by_rank = paths_by_rank(paths)
     for axis, team in zip(axes, TOP_TEAMS):
         frame = by_rank.get(team["rank"])
         if frame is None:
@@ -828,9 +858,32 @@ def draw_empty(axis, team):
     axis.set_title(f"{team['rank']}. {team['name']} ({team['record']})", loc="left", fontsize=10)
 
 
+def paths_by_rank(paths):
+    grouped = {}
+    for frame in paths:
+        if frame is None or len(frame) == 0:
+            continue
+        frame = frame.copy()
+        for column in (
+            "hours_from_tip",
+            "mid",
+            "variance_score",
+            "score_margin",
+            "spread_mid",
+            "total_mid",
+            "spread_width",
+            "best_bid",
+            "best_ask",
+        ):
+            if column in frame:
+                frame[column] = pd.to_numeric(frame[column], errors="coerce")
+        grouped[int(frame["rank"].iloc[0])] = frame
+    return grouped
+
+
 def plot_variance_paths(paths):
     fig, axes = facet_figure(sharey=True)
-    by_rank = {frame["rank"].iloc[0]: frame for frame in paths}
+    by_rank = paths_by_rank(paths)
     for axis, team in zip(axes, TOP_TEAMS):
         frame = by_rank.get(team["rank"])
         if frame is None or frame["variance_score"].dropna().empty:
@@ -874,7 +927,7 @@ def plot_variance_vs_margin(summary):
 
 def plot_price_vs_score(paths):
     fig, axes = facet_figure()
-    by_rank = {frame["rank"].iloc[0]: frame for frame in paths}
+    by_rank = paths_by_rank(paths)
     for axis, team in zip(axes, TOP_TEAMS):
         frame = by_rank.get(team["rank"])
         if frame is None:
@@ -883,7 +936,7 @@ def plot_price_vs_score(paths):
         axis.plot(frame["hours_from_tip"], frame["mid"], color="#1f4e79", linewidth=1.4, label="Win price")
         axis.axvline(0, color="#b0b0b0", linewidth=0.8)
         axis.set_ylim(0, 1)
-        scores = frame["score_margin"].dropna()
+        scores = frame["score_margin"].dropna() if "score_margin" in frame else pd.Series(dtype=float)
         if not scores.empty:
             twin = axis.twinx()
             twin.plot(frame["hours_from_tip"], frame["score_margin"], color="#b04a4a", linewidth=1.2, label="Score margin")
@@ -904,7 +957,7 @@ def plot_price_vs_score(paths):
 
 def plot_market_paths(paths):
     fig, axes = facet_figure(sharey=True)
-    by_rank = {frame["rank"].iloc[0]: frame for frame in paths}
+    by_rank = paths_by_rank(paths)
     labeled = False
     for axis, team in zip(axes, TOP_TEAMS):
         frame = by_rank.get(team["rank"])
@@ -912,9 +965,9 @@ def plot_market_paths(paths):
             draw_empty(axis, team)
             continue
         axis.plot(frame["hours_from_tip"], frame["mid"], color="#1f4e79", linewidth=1.4, label="Win")
-        if "spread_mid" in frame:
+        if "spread_mid" in frame and frame["spread_mid"].notna().any():
             axis.plot(frame["hours_from_tip"], frame["spread_mid"], color="#d9762c", linewidth=1.2, label="Main spread")
-        if "total_mid" in frame:
+        if "total_mid" in frame and frame["total_mid"].notna().any():
             axis.plot(frame["hours_from_tip"], frame["total_mid"], color="#2f7d4a", linewidth=1.2, label="Game total Over")
         axis.axvline(0, color="#b0b0b0", linewidth=0.8)
         axis.set_ylim(0, 1)
@@ -935,7 +988,7 @@ def plot_market_paths(paths):
 
 def plot_bid_ask(paths):
     fig, axes = facet_figure(sharey=True)
-    by_rank = {frame["rank"].iloc[0]: frame for frame in paths}
+    by_rank = paths_by_rank(paths)
     for axis, team in zip(axes, TOP_TEAMS):
         frame = by_rank.get(team["rank"])
         if frame is None or "spread_width" not in frame or frame["spread_width"].dropna().empty:
@@ -960,7 +1013,10 @@ def plot_alternate_spreads(frame):
     if frame is None or frame.empty:
         grouped = {}
     else:
-        grouped = {rank: part.dropna(subset=["line", "pregame_price"]) for rank, part in frame.groupby("rank")}
+        frame = frame.copy()
+        frame["line"] = pd.to_numeric(frame["line"], errors="coerce")
+        frame["pregame_price"] = pd.to_numeric(frame["pregame_price"], errors="coerce")
+        grouped = {int(rank): part.dropna(subset=["line", "pregame_price"]) for rank, part in frame.groupby("rank")}
     for axis, team in zip(axes, TOP_TEAMS):
         part = grouped.get(team["rank"])
         if part is None or part.empty:
@@ -1004,10 +1060,22 @@ def plot_spread(summary):
 
 
 if __name__ == "__main__":
-    print(
-        "Reading whole hourly Parquet files from the class CloudFront host. "
-        "A full run is on the order of a few GB, and that host logs each file. "
-        "Final scores are a few small requests to ESPN, not to that host.",
-        flush=True,
+    import argparse
+
+    parser = argparse.ArgumentParser(description="NBA top-10 price paths from the class order-book files.")
+    parser.add_argument(
+        "--plots-only",
+        action="store_true",
+        help="Redraw the charts from outputs/nba CSVs. Does not download hourly files.",
     )
-    analyze()
+    args = parser.parse_args()
+    if args.plots_only:
+        redraw()
+    else:
+        print(
+            "Reading whole hourly Parquet files from the class CloudFront host. "
+            "A full run is on the order of a few GB, and that host logs each file. "
+            "Final scores are a few small requests to ESPN, not to that host.",
+            flush=True,
+        )
+        analyze()

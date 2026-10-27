@@ -200,7 +200,10 @@ print(con.execute("SELECT slug, title, best_bid, best_ask FROM pm.markets LIMIT 
 
 ```bash
 python examples/nba_analysis.py
+python examples/nba_analysis.py --plots-only
 ```
+
+`--plots-only` redraws the charts from the CSVs already in `outputs/nba/`. It does not download the hourly files. Use it when a run finished the download and then failed while drawing.
 
 The run reads six hours before the listed tip through three hours after it. A busy hour is tens or hundreds of megabytes, and one full pass is on the order of a few gigabytes. CloudFront logs each file and the bytes sent under the shared class login. The spread, alternate spreads, and game total are filtered out of those same hours, so they do not add another download. Final scores are a few small requests to ESPN's public scoreboard. The charts are written on your machine only; they are not stored in this repo. Output files:
 

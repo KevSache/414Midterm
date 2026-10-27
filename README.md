@@ -226,8 +226,13 @@ The run reads six hours before the listed tip through three hours after it. A bu
 | `price_paths.csv` | The five-minute rows behind the charts, including the variance score and the score margin. |
 | `game_results.csv` | ESPN score, quarter lines, and margin for each team that had an order book. |
 | `alternate_spreads.csv` | Pregame price of each alternate spread. |
+| `large_orders.png` | Unusually large posted sizes on the win price. A dark mark means the price then moved that way and the order came before the next scoring play, not just after the previous one. |
+| `large_order_counts.png` | How many of those sizes each game had, how many the price followed, and how many also led a score. |
+| `large_orders.csv` | The rows behind those two charts. There is no wallet on them. |
 
 The variance score is high while the win price is moving around, and it falls once the price sits still near 0 or 1. A blowout that runs the price from a coin flip to 0.95 in one smooth stretch still produces a high score during that run. A close game that keeps crossing back and forth stays high for longer. `variance_score_early` and `variance_score_late` in `summary.csv` split the first 2.5 hours after tip into two halves, which is the check for whether the score rises as the game goes on. `minutes_to_decided` is how many minutes after tip the win price first reaches 0.90 or 0.10.
+
+`large_orders.png` is built from the same hourly files, in the same pass. A kept row has a posted size at least 10 times the median size on that token and side. Repeated prints of the same resting size are collapsed. The price "followed" when the mid 30 minutes later is at least 0.03 further in that direction. "Led a score" means the previous scoring play was at least 15 seconds earlier and the next one came within two minutes. A dark mark is a row that did both. These rows are still anonymous order-book updates. A removed size is not included, because a cancel and a fill look the same. `--plots-only` draws this chart only when `large_orders.csv` is already in `outputs/nba/`. A run from before this change does not have that file, so produce it with a new full run.
 
 The class database does not store the point margin. `won` is the Polymarket resolution, and the score, quarter lines, and margin come from ESPN. `markets.best_bid` is the latest snapshot, not the history, so the price charts come from the Parquet files. Some game-winner markets have volume in Postgres and still have zero Parquet rows; those teams stay blank on the charts.
 

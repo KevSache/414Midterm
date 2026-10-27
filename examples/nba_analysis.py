@@ -62,6 +62,8 @@ IN_GAME_HOURS = 2.5
 VARIANCE_BINS = 6
 MAX_SPREADS = 4
 MAX_FIND = 40
+LARGE_SIZE_MULT = 10
+FOLLOW_MOVE = 0.03
 ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates={day}"
 ESPN_SUMMARY = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={event_id}"
 LINE_RE = re.compile(r"[-+]?\d+(?:\.\d+)?")
@@ -259,6 +261,58 @@ def read_hour(duck, moment, pairs):
         return pd.DataFrame()
     frame = pd.DataFrame(rows, columns=["market", "asset_id", "bin", "best_bid", "best_ask"])
     return frame
+
+
+def read_hour_scan(duck, moment, pairs):
+    """One read of an hourly file: five-minute quotes, plus unusually large sizes.
+
+    A large size is at least 10 times the median size on that token and side.
+    Size 0 is a removed level, so those rows are left out. The file is read once.
+    """
+    empty_bins = pd.DataFrame(columns=["market", "asset_id", "bin", "best_bid", "best_ask"])
+    empty_large = pd.DataFrame(columns=["ts_ms", "market", "asset_id", "side", "price", "size", "med_size"])
+    if not pairs:
+        return empty_bins, empty_large
+    url = f"{BUCKET}/events-{hour_key(moment)}.parquet"
+    values = ", ".join(
+        f"('{market}', '{asset}', {1 if focus else 0})" for market, asset, focus in pairs
+    )
+    try:
+        duck.execute(f"""
+            CREATE OR REPLACE TEMP TABLE hour_hits AS
+            WITH want(market, asset_id, focus) AS (VALUES {values})
+            SELECT p.ts_ms, w.market, w.asset_id, w.focus, p.side, p.price, p.size
+            FROM read_parquet('{url}') p
+            JOIN want w ON p.market = w.market AND p.asset_id = w.asset_id
+            WHERE p.size > 0
+        """)
+        bin_rows = duck.execute("""
+            SELECT market, asset_id,
+                   CAST(to_timestamp(floor(ts_ms / 1000.0 / 300) * 300) AS VARCHAR) AS bin,
+                   max(price) FILTER (WHERE side = 'BUY') AS best_bid,
+                   min(price) FILTER (WHERE side = 'SELL') AS best_ask
+            FROM hour_hits
+            GROUP BY 1, 2, 3
+        """).fetchall()
+        large_rows = duck.execute(f"""
+            WITH med AS (
+                SELECT market, asset_id, side, median(size) AS med_size
+                FROM hour_hits
+                WHERE focus = 1
+                GROUP BY 1, 2, 3
+                HAVING count(*) >= 20
+            )
+            SELECT h.ts_ms, h.market, h.asset_id, h.side, h.price, h.size, m.med_size
+            FROM hour_hits h
+            JOIN med m USING (market, asset_id, side)
+            WHERE h.focus = 1 AND h.size >= m.med_size * {LARGE_SIZE_MULT}
+        """).fetchall()
+    except Exception as error:
+        print(f"  skip {hour_key(moment)}: {error.__class__.__name__}", flush=True)
+        return empty_bins, empty_large
+    bins = pd.DataFrame(bin_rows, columns=["market", "asset_id", "bin", "best_bid", "best_ask"])
+    larges = pd.DataFrame(large_rows, columns=["ts_ms", "market", "asset_id", "side", "price", "size", "med_size"])
+    return bins, larges
 
 
 def has_book(duck, tip, condition_id, asset_id, checks=(0, 1, 3)):
@@ -584,6 +638,94 @@ def attach_scores(path, plays, team_is_home):
     return merged.drop(columns=["wallclock", "home_score", "away_score"], errors="ignore")
 
 
+def dedupe_orders(frame):
+    """Collapse repeated prints of the same resting size."""
+    if frame is None or frame.empty:
+        return frame
+    frame = frame.sort_values("time").copy()
+    frame["price_key"] = frame["price"].round(3)
+    frame["size_key"] = frame["size"].round(1)
+    keys = ["market", "asset_id", "side", "price_key", "size_key"]
+    gap = frame.groupby(keys, sort=False)["time"].diff().dt.total_seconds()
+    return frame.loc[gap.isna() | (gap > 10)].drop(columns=["price_key", "size_key"])
+
+
+def scoring_times(plays):
+    empty = pd.DataFrame(columns=["wallclock"])
+    if plays is None or plays.empty:
+        return empty
+    frame = plays.sort_values("wallclock").copy()
+    changed = (frame["home_score"] + frame["away_score"]).diff().fillna(0) != 0
+    times = frame.loc[changed, ["wallclock"]]
+    return times if not times.empty else empty
+
+
+def classify_orders(orders, path, plays, tip):
+    """Mark large sizes whose price then moved, and which of those led a scoring play.
+
+    There is no wallet on these rows. A size that is removed cannot be told from a
+    cancel, so only posted sizes are kept. 'Led a score' means the previous basket
+    was at least 15 seconds earlier and the next basket came within two minutes.
+    """
+    columns = [
+        "time", "hours_from_tip", "side", "price", "size", "med_size", "size_ratio",
+        "mid_at", "mid_later", "price_followed", "led_score", "stands_out",
+    ]
+    if orders is None or orders.empty:
+        return pd.DataFrame(columns=columns)
+    frame = orders.copy()
+    frame["time"] = pd.to_datetime(frame["ts_ms"], unit="ms", utc=True)
+    frame = dedupe_orders(frame).sort_values("time").reset_index(drop=True)
+    frame["hours_from_tip"] = (frame["time"] - pd.Timestamp(tip)) / pd.Timedelta(hours=1)
+    frame["size_ratio"] = frame["size"] / frame["med_size"]
+    mids = pd.DataFrame(columns=["bin", "mid"])
+    if path is not None and not path.empty and "mid" in path:
+        mids = path.loc[path["mid"].notna(), ["bin", "mid"]].sort_values("bin")
+    if not mids.empty:
+        frame = pd.merge_asof(frame, mids, left_on="time", right_on="bin", direction="backward")
+        frame = frame.rename(columns={"mid": "mid_at"}).drop(columns=["bin"], errors="ignore")
+        frame["lookup"] = frame["time"] + pd.Timedelta(minutes=30)
+        later = pd.merge_asof(
+            frame[["lookup"]],
+            mids.rename(columns={"bin": "later_bin", "mid": "mid_later"}),
+            left_on="lookup",
+            right_on="later_bin",
+            direction="forward",
+        )
+        frame["mid_later"] = later["mid_later"].to_numpy()
+        frame = frame.drop(columns=["lookup"])
+    else:
+        frame["mid_at"] = pd.NA
+        frame["mid_later"] = pd.NA
+    move = pd.to_numeric(frame["mid_later"], errors="coerce") - pd.to_numeric(frame["mid_at"], errors="coerce")
+    buy = frame["side"].str.upper() == "BUY"
+    frame["price_followed"] = (buy & (move >= FOLLOW_MOVE)) | (~buy & (move <= -FOLLOW_MOVE))
+    frame["price_followed"] = frame["price_followed"].fillna(False)
+    times = scoring_times(plays)
+    frame["led_score"] = False
+    if not times.empty:
+        previous = pd.merge_asof(
+            frame[["time"]],
+            times.rename(columns={"wallclock": "prev_score"}),
+            left_on="time",
+            right_on="prev_score",
+            direction="backward",
+        )
+        nxt = pd.merge_asof(
+            frame[["time"]],
+            times.rename(columns={"wallclock": "next_score"}),
+            left_on="time",
+            right_on="next_score",
+            direction="forward",
+        )
+        since_s = (frame["time"] - previous["prev_score"]).dt.total_seconds()
+        until_s = (nxt["next_score"] - frame["time"]).dt.total_seconds()
+        not_reaction = since_s.isna() | (since_s >= 15)
+        frame["led_score"] = (not_reaction & until_s.notna() & (until_s <= 120)).fillna(False)
+    frame["stands_out"] = frame["price_followed"] & frame["led_score"]
+    return frame[columns]
+
+
 def quote_path(book, market, tip):
     if market is None or book.empty:
         return add_path_features(series_from(pd.DataFrame(), tip))
@@ -613,33 +755,39 @@ def analyze(find_text="power"):
         if item["game"] is None:
             continue
         game = item["game"]
-        pairs = [(game["condition_id"], item["asset_id"])]
+        pairs = [(game["condition_id"], item["asset_id"], True)]
         for market in item["spreads"]:
-            pairs.append((market["condition_id"], market["asset_id"]))
+            pairs.append((market["condition_id"], market["asset_id"], False))
         if item["total"]:
-            pairs.append((item["total"]["condition_id"], item["total"]["asset_id"]))
+            pairs.append((item["total"]["condition_id"], item["total"]["asset_id"], False))
         for moment in hours_around(game["tip"]):
-            needed.setdefault(moment, [])
-            for pair in pairs:
-                if pair not in needed[moment]:
-                    needed[moment].append(pair)
+            bucket = needed.setdefault(moment, {})
+            for market, asset, focus in pairs:
+                key = (market, asset)
+                bucket[key] = bucket.get(key, False) or focus
 
     quotes = []
+    large_hits = []
     moments = sorted(needed)
     for index, moment in enumerate(moments, start=1):
         if index > 1 and index % 6 == 1:
             duck.close()
             duck = connect_duckdb()
         print(f"hour {index}/{len(moments)} {hour_key(moment)}", flush=True)
-        frame = read_hour(duck, moment, needed[moment])
+        pairs = [(market, asset, focus) for (market, asset), focus in needed[moment].items()]
+        frame, larges = read_hour_scan(duck, moment, pairs)
         if not frame.empty:
             quotes.append(frame)
+        if not larges.empty:
+            large_hits.append(larges)
     duck.close()
     book = pd.concat(quotes, ignore_index=True) if quotes else pd.DataFrame()
+    large_book = pd.concat(large_hits, ignore_index=True) if large_hits else pd.DataFrame()
 
     summaries = []
     paths = []
     alternates = []
+    order_frames = []
     results = []
     score_cache = {}
     boards = {}
@@ -664,6 +812,9 @@ def analyze(find_text="power"):
             "variance_score_late": None,
             "variance_score_live": None,
             "minutes_to_decided": None,
+            "large_n": 0,
+            "followed_n": 0,
+            "led_score_n": 0,
             "espn_team_score": None,
             "espn_opponent_score": None,
             "espn_margin": None,
@@ -773,6 +924,9 @@ def analyze(find_text="power"):
                 "total_line": total_line,
                 "total_pregame": total_pregame,
                 "total_hit": None if final_points is None or total_line is None else final_points > total_line,
+                "large_n": 0,
+                "followed_n": 0,
+                "led_score_n": 0,
                 "volume_clob": None if pd.isna(game["volume_clob"]) else game["volume_clob"],
                 "score_source": None if result is None else f"espn:{result['event_id']}",
                 "note": "" if result is not None else "Order book found. ESPN had no matching final score.",
@@ -802,6 +956,24 @@ def analyze(find_text="power"):
             plot_path["label"] = f"{item['name']} vs {opponent}{score_label}"
             plot_path["bucket"] = summary["game_bucket"]
             paths.append(plot_path)
+        if not large_book.empty:
+            mine_orders = large_book[
+                (large_book["market"] == game["condition_id"]) & (large_book["asset_id"] == item["asset_id"])
+            ]
+            tagged = classify_orders(
+                mine_orders,
+                path,
+                None if result is None else result["plays"],
+                game["tip"],
+            )
+            if not tagged.empty:
+                tagged.insert(0, "rank", item["rank"])
+                tagged.insert(1, "team", item["name"])
+                tagged.insert(2, "label", f"{item['name']} vs {opponent}")
+                order_frames.append(tagged)
+                summary["large_n"] = int(len(tagged))
+                summary["followed_n"] = int(tagged["price_followed"].sum())
+                summary["led_score_n"] = int(tagged["stands_out"].sum())
 
     summary_frame = pd.DataFrame(summaries)
     alternate_frame = pd.DataFrame(alternates)
@@ -811,6 +983,9 @@ def analyze(find_text="power"):
     if not alternate_frame.empty:
         alternate_frame.to_csv(OUTPUT / "alternate_spreads.csv", index=False)
     pd.DataFrame(results).to_csv(OUTPUT / "game_results.csv", index=False)
+    orders = pd.concat(order_frames, ignore_index=True) if order_frames else pd.DataFrame()
+    if not orders.empty:
+        orders.to_csv(OUTPUT / "large_orders.csv", index=False)
     plot_paths(paths)
     plot_variance(summary_frame)
     plot_variance_paths(paths)
@@ -821,6 +996,8 @@ def analyze(find_text="power"):
     plot_alternate_spreads(alternate_frame)
     plot_calibration(summary_frame)
     plot_spread(summary_frame)
+    plot_large_orders(paths, orders)
+    plot_large_order_counts(summary_frame)
     columns = [
         "rank",
         "team",
@@ -830,6 +1007,9 @@ def analyze(find_text="power"):
         "variance_score_late",
         "espn_margin",
         "game_bucket",
+        "large_n",
+        "followed_n",
+        "led_score_n",
         "won",
     ]
     print(summary_frame[columns].to_string(index=False))
@@ -876,6 +1056,10 @@ def redraw():
     plot_alternate_spreads(alternates)
     plot_calibration(summary)
     plot_spread(summary)
+    orders_path = OUTPUT / "large_orders.csv"
+    orders = pd.read_csv(orders_path) if orders_path.exists() else pd.DataFrame()
+    plot_large_orders(paths, orders)
+    plot_large_order_counts(summary)
     print(f"Rewrote charts in {OUTPUT}")
 
 
@@ -1127,6 +1311,90 @@ def plot_alternate_spreads(frame):
         axis.set_title(panel_heading(panel), loc="left", fontsize=9)
         axis.grid(axis="y", color="#eeeeee")
     finish_grid(fig, axes, count, cols, "Points, from that team's side", "Pregame cover price", "Alternate spreads before tip", "alternate_spreads.png")
+
+
+def plot_large_orders(paths, orders):
+    fig, axes, count, cols = grid_for()
+    by_rank = paths_by_rank(paths)
+    grouped = {}
+    if orders is not None and not orders.empty:
+        orders = orders.copy()
+        for column in ("hours_from_tip", "price", "size_ratio"):
+            if column in orders:
+                orders[column] = pd.to_numeric(orders[column], errors="coerce")
+        if "stands_out" in orders:
+            orders["stands_out"] = orders["stands_out"].map(lambda value: str(value).strip().lower() in {"true", "1"} or value is True)
+        grouped = {int(rank): part for rank, part in orders.groupby("rank")}
+    labeled = False
+    legend_axis = None
+    for axis, panel in zip(axes, ACTIVE_PANELS):
+        frame = by_rank.get(panel["rank"])
+        if frame is None:
+            draw_empty(axis, panel)
+            continue
+        axis.plot(frame["hours_from_tip"], frame["mid"], color="#d9d9d9", linewidth=1.2)
+        axis.axvline(0, color="#b0b0b0", linewidth=0.8)
+        axis.set_ylim(0, 1)
+        part = grouped.get(panel["rank"])
+        if part is not None and not part.empty:
+            if len(part) > 60 and "size_ratio" in part:
+                part = part.nlargest(60, "size_ratio")
+            quiet = part[~part["stands_out"]] if "stands_out" in part else part
+            loud = part[part["stands_out"]] if "stands_out" in part else part.iloc[0:0]
+            if legend_axis is None:
+                legend_axis = axis
+            if not quiet.empty:
+                buys = quiet["side"].str.upper() == "BUY"
+                axis.scatter(quiet.loc[buys, "hours_from_tip"], quiet.loc[buys, "price"], marker="^", s=18, color="#9aa0a6", label="Large buy" if not labeled else None)
+                axis.scatter(quiet.loc[~buys, "hours_from_tip"], quiet.loc[~buys, "price"], marker="v", s=18, color="#9aa0a6", label="Large sell" if not labeled else None)
+            if not loud.empty:
+                buys = loud["side"].str.upper() == "BUY"
+                axis.scatter(loud.loc[buys, "hours_from_tip"], loud.loc[buys, "price"], marker="^", s=36, color="#1f4e79", label="Led a score" if not labeled else None, zorder=3)
+                axis.scatter(loud.loc[~buys, "hours_from_tip"], loud.loc[~buys, "price"], marker="v", s=36, color="#d9762c", label="Led a score, sell" if not labeled else None, zorder=3)
+            labeled = True
+        title = frame["label"].iloc[0] if "label" in frame else panel["name"]
+        axis.set_title(f"{panel['rank']}. {title}", loc="left", fontsize=9)
+        axis.grid(axis="y", color="#eeeeee")
+    if legend_axis is not None:
+        legend_axis.legend(fontsize=7, loc="lower left")
+    finish_grid(
+        fig, axes, count, cols,
+        "Hours from listed tip", "Price",
+        "Large orders. Dark marks led the next score and the price followed.",
+        "large_orders.png",
+    )
+
+
+def plot_large_order_counts(summary):
+    columns = ["team", "large_n", "followed_n", "led_score_n"]
+    if summary is None or summary.empty or not set(columns).issubset(summary.columns):
+        fig, axis = plt.subplots(figsize=(8, 4))
+        axis.text(0.5, 0.5, "No large-order counts in this run", ha="center")
+        fig.tight_layout()
+        fig.savefig(OUTPUT / "large_order_counts.png", dpi=140)
+        plt.close(fig)
+        return
+    frame = summary.copy()
+    for column in ("large_n", "followed_n", "led_score_n"):
+        frame[column] = pd.to_numeric(frame[column], errors="coerce").fillna(0)
+    frame = frame[frame["large_n"] > 0]
+    fig, axis = plt.subplots(figsize=(max(10, 0.55 * max(len(frame), 1)), 5))
+    if frame.empty:
+        axis.text(0.5, 0.5, "No order was at least 10 times the median size", ha="center")
+    else:
+        positions = list(range(len(frame)))
+        width = 0.25
+        axis.bar([p - width for p in positions], frame["large_n"], width=width, color="#c5c5c5", label="At least 10x median size")
+        axis.bar(positions, frame["followed_n"], width=width, color="#d9762c", label="Price followed for 30 minutes")
+        axis.bar([p + width for p in positions], frame["led_score_n"], width=width, color="#1f4e79", label="Also led the next score")
+        axis.set_xticks(positions)
+        axis.set_xticklabels(frame["team"], rotation=30, ha="right")
+        axis.legend()
+    axis.set_ylabel("Orders")
+    axis.set_title("Large book updates, and how many lined up with the game")
+    fig.tight_layout()
+    fig.savefig(OUTPUT / "large_order_counts.png", dpi=140)
+    plt.close(fig)
 
 
 def plot_spread(summary):

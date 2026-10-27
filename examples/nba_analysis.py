@@ -13,8 +13,9 @@ that never appears in the files.
 `props5` (or `--find props --each 5`) does the same charts for player
 over/under markets. It reads those same tip hours and keeps points,
 assists, and rebounds lines that are high on both matched volume and
-posted size. A line is charted only when its token is in the files and
-its stored volume is at least 1,000. `--stats` can add
+posted size. A line is charted when its token is in the files and
+its stored volume is above zero. The 1,000 floor is only for game
+winners. `--stats` can add
 threes, steals, or blocks. Charts for that run are written to
 outputs/nba/props/ so they do not replace the game-winner charts.
 
@@ -486,21 +487,26 @@ def moneyline_tokens(games):
     return pd.DataFrame(rows)
 
 
-def balance_ranks(frame):
-    """Keep rows with a book and matched volume of at least MIN_VOLUME_CLOB.
+def balance_ranks(frame, minimum=None):
+    """Keep rows with a book and matched volume of at least `minimum`.
 
     `balance` is the lower of the two percentile ranks inside that set.
     Sorting by it puts a market first only when both numbers are high.
-    A huge posted size cannot rescue a volume of 129, and a huge
-    volume_clob cannot rescue a book that is barely there.
+    A huge posted size cannot rescue a tiny volume, and a huge
+    volume_clob cannot rescue a book that is barely there. Game winners
+    use MIN_VOLUME_CLOB. Props use 0, which still drops a book that
+    never matched.
     """
+    if minimum is None:
+        minimum = MIN_VOLUME_CLOB
     if frame is None or frame.empty:
         return frame.iloc[0:0].copy() if frame is not None else frame
     ranked = frame.copy()
     ranked["volume_clob"] = pd.to_numeric(ranked["volume_clob"], errors="coerce").fillna(0.0)
     ranked["book_size"] = pd.to_numeric(ranked["book_size"], errors="coerce").fillna(0.0)
     ranked["book_updates"] = pd.to_numeric(ranked["book_updates"], errors="coerce").fillna(0.0)
-    ranked = ranked[(ranked["book_updates"] > 0) & (ranked["volume_clob"] >= MIN_VOLUME_CLOB)]
+    traded = ranked["volume_clob"] >= minimum if minimum > 0 else ranked["volume_clob"] > 0
+    ranked = ranked[(ranked["book_updates"] > 0) & traded]
     if ranked.empty:
         return ranked
     ranked["volume_pct"] = ranked["volume_clob"].rank(method="average", pct=True)
@@ -773,8 +779,9 @@ def rank_props(props, activity, each, stats):
     """For each stat, keep lines that are high on both matched volume and posted size.
 
     When one player has several numbers in the same game, the charted line is
-    the one with the higher balance score. A line under MIN_VOLUME_CLOB is
-    left out even if its book is busy.
+    the one with the higher balance score. A line with no matched volume is
+    left out. The 1,000 game-winner floor is not applied here, because prop
+    volumes are much smaller.
     """
     if props is None or props.empty or activity is None or activity.empty:
         return []
@@ -786,9 +793,9 @@ def rank_props(props, activity, each, stats):
     details = props.drop(columns=[column for column in ("condition_id", "asset_id", "tip") if column in props.columns])
     ranked = with_book.merge(details, on="slug", how="left")
     print(f"{len(ranked)} prop lines appeared in the order book.", flush=True)
-    ranked = balance_ranks(ranked)
+    ranked = balance_ranks(ranked, minimum=0)
     print(
-        f"{len(ranked)} of them have matched volume of at least {MIN_VOLUME_CLOB:,.0f}.",
+        f"{len(ranked)} of them have matched volume above zero.",
         flush=True,
     )
     if ranked.empty:
@@ -814,7 +821,7 @@ def rank_props(props, activity, each, stats):
             )
         if kept < each:
             print(
-                f"Found {kept} {stat} markets with both a book and matched volume of at least {MIN_VOLUME_CLOB:,.0f}.",
+                f"Found {kept} {stat} markets with both a book and matched volume above zero.",
                 flush=True,
             )
     return selected
@@ -1649,8 +1656,7 @@ def analyze_props(each, stats):
     duck.close()
     if not selected:
         raise SystemExit(
-            "No prop line had both an order book and matched volume of at least "
-            f"{MIN_VOLUME_CLOB:,.0f}. Nothing was charted."
+            "No prop line had both an order book and matched volume above zero. Nothing was charted."
         )
     ACTIVE_PANELS = set_panels(selected)
     book, large_book = download_book(selected)
@@ -1862,8 +1868,8 @@ SHARED_COLUMN_DOCS = {
     ("*", "led_score_n"): "How many large sizes both followed the price and arrived at least 15 seconds after the previous event and within 2 minutes before the next one.",
     ("*", "book_size"): "Sum of posted size (size greater than 0) for the charted token in the hour before tip, the tip hour, and the hour after. Posted size is the offer traffic in the book. It is not matched trade volume.",
     ("*", "book_updates"): "How many of those posted-size rows the charted token had in those three hours.",
-    ("*", "balance"): "Lower of this market's matched-volume percentile and its posted-size percentile, among NBA markets that have an order book and volume_clob of at least 1,000. Panels are sorted by this, highest first, so both numbers have to be high.",
-    ("*", "volume_clob"): "Stored lifetime matched CLOB volume of this contract, in dollars. It is a snapshot from the markets table. A market under 1,000 is left out of the charts.",
+    ("*", "balance"): "Lower of this market's matched-volume percentile and its posted-size percentile among the markets that were eligible. Panels are sorted by this, highest first, so both numbers have to be high. Game winners are eligible at volume_clob of at least 1,000. Props are eligible at any matched volume above zero.",
+    ("*", "volume_clob"): "Stored lifetime matched CLOB volume of this contract, in dollars. It is a snapshot from the markets table. Game-winner charts leave out markets under 1,000. Prop charts leave out markets at zero.",
     ("*", "score_source"): "ESPN event id, written as espn:<id>.",
     ("*", "note"): "Why a row has no price path or no ESPN result. Blank when both were found.",
     ("*", "bin"): "Start of the 5-minute window, in UTC.",
@@ -2550,7 +2556,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--find",
         default="top10",
-        help="topN or propsN. The default, top10, keeps NBA game winners that have matched volume of at least 1,000 and a busy order book, ranked so both are high. props5 does the same for points, assists, and rebounds. No team filter.",
+        help="topN or propsN. The default, top10, keeps NBA game winners with matched volume of at least 1,000 and a busy order book. props5 keeps points, assists, and rebounds lines that have an order book and any matched volume above zero, ranked so both are high. No team filter.",
     )
     parser.add_argument(
         "--each",

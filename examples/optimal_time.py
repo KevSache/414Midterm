@@ -475,14 +475,26 @@ def within_slope(panel):
     return beta, se, int(len(frame)), int(groups)
 
 
-def half_hour_means(panel):
-    if panel.empty or CLOCK not in panel.columns:
-        return pd.DataFrame(columns=[CLOCK, "mean_profit", "markets"])
-    frame = panel.copy()
+def market_buckets(panel):
+    """One profit per market in each half hour. A long quote counts once."""
+    columns = [CLOCK, "market_id", "profit"]
+    if panel is None or panel.empty or CLOCK not in panel.columns:
+        return pd.DataFrame(columns=columns)
+    frame = panel.dropna(subset=[CLOCK, "profit", "market_id"]).copy()
+    if frame.empty:
+        return pd.DataFrame(columns=columns)
     frame[CLOCK] = (np.floor(frame[CLOCK] * 2) / 2).round(1)
-    grouped = frame.groupby(CLOCK, as_index=False).agg(
+    grouped = frame.groupby([CLOCK, "market_id"], as_index=False)["profit"].mean()
+    return grouped.sort_values([CLOCK, "market_id"]).reset_index(drop=True)
+
+
+def half_hour_means(panel):
+    buckets = market_buckets(panel)
+    if buckets.empty:
+        return pd.DataFrame(columns=[CLOCK, "mean_profit", "markets"])
+    grouped = buckets.groupby(CLOCK, as_index=False).agg(
         mean_profit=("profit", "mean"),
-        markets=("cluster", "nunique"),
+        markets=("market_id", "nunique"),
     )
     return grouped
 
@@ -558,7 +570,7 @@ def write_report(sample, panel, best, within, pooled, means):
     return means
 
 
-def plot_sample(sample, best, means, within):
+def plot_sample(sample, best, means, within, panel):
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
     if best.empty:
         axes[0].text(0.5, 0.5, "No prices", ha="center")
@@ -568,22 +580,45 @@ def plot_sample(sample, best, means, within):
     axes[0].set_xlabel(XLABEL)
     axes[0].set_ylabel("Markets")
     axes[0].set_title("When the mid was lowest")
+    buckets = market_buckets(panel)
     if means.empty:
         axes[1].text(0.5, 0.5, "No prices", ha="center")
     else:
-        axes[1].plot(means[CLOCK], means["mean_profit"], color="#1f4e79", marker="o", linewidth=1.4)
+        if not buckets.empty:
+            counts = buckets.groupby(CLOCK)["market_id"].transform("count")
+            rank = buckets.groupby(CLOCK).cumcount()
+            spread = np.where(counts <= 1, 0.0, (rank / (counts - 1) - 0.5) * 0.16)
+            axes[1].scatter(
+                buckets[CLOCK] + spread,
+                buckets["profit"],
+                s=18,
+                color="#8eacc8",
+                alpha=0.75,
+                linewidths=0,
+                label="One market in that half hour",
+                zorder=2,
+            )
+        axes[1].plot(
+            means[CLOCK],
+            means["mean_profit"],
+            color="#1f4e79",
+            marker="o",
+            linewidth=1.6,
+            label="Average profit of buying then",
+            zorder=3,
+        )
         if within is not None:
             beta = within[0]
             center_x = float(means[CLOCK].mean())
             center_y = float(means["mean_profit"].mean())
             grid = np.linspace(float(means[CLOCK].min()), float(means[CLOCK].max()), 20)
-            axes[1].plot(grid, center_y + beta * (grid - center_x), color="#d9762c", linewidth=1.2, label="Within-market slope")
-            axes[1].legend(fontsize=8)
+            axes[1].plot(grid, center_y + beta * (grid - center_x), color="#d9762c", linewidth=1.2, label="Within-market slope", zorder=3)
+        axes[1].legend(fontsize=8)
     axes[1].axvline(0, color="#b0b0b0", linewidth=0.8)
     axes[1].axhline(0, color="#b0b0b0", linewidth=0.8)
     axes[1].set_xlabel(XLABEL)
-    axes[1].set_ylabel("Mean profit per share")
-    axes[1].set_title("Average profit of buying then")
+    axes[1].set_ylabel("Profit per share")
+    axes[1].set_title("Profit of buying in that half hour")
     fig.suptitle(sample)
     fig.tight_layout()
     fig.savefig(OUTPUT / f"{sample}.png", dpi=140)
@@ -796,7 +831,7 @@ def run_sample(sample, panel):
     best.to_csv(OUTPUT / f"{sample}_best_times.csv", index=False)
     means.to_csv(OUTPUT / f"{sample}_half_hours.csv", index=False)
     write_report(sample, frame, best, within, pooled, means)
-    plot_sample(sample, best, means, within)
+    plot_sample(sample, best, means, within, frame)
     write_accuracy(sample, frame)
 
 

@@ -953,6 +953,73 @@ def chart_prices(summary):
     return frame
 
 
+def settlement_price(won):
+    """1 when the charted outcome won, 0 when it lost, otherwise unknown."""
+    if won is None or pd.isna(won):
+        return None
+    if isinstance(won, str):
+        text = won.strip().lower()
+        if text in {"true", "1"}:
+            return 1.0
+        if text in {"false", "0"}:
+            return 0.0
+        return None
+    return 1.0 if bool(won) else 0.0
+
+
+def profit_per_share(price, won):
+    """Profit per share of buying at price and holding until settlement.
+
+    The contract pays 1 or 0. A buy at 0.40 that wins is worth 0.60.
+    The order book has no trade tape, so this is one share at the window's
+    mid, not a matched fill.
+    """
+    settle = settlement_price(won)
+    if settle is None:
+        return None
+    try:
+        paid = float(price)
+    except (TypeError, ValueError):
+        return None
+    if pd.isna(paid):
+        return None
+    return settle - paid
+
+
+def attach_close_profit(path, won):
+    """Add profit_to_close on every five-minute row."""
+    path = path.copy() if path is not None else pd.DataFrame()
+    settle = settlement_price(won)
+    if path.empty or "mid" not in path.columns or settle is None:
+        path["profit_to_close"] = pd.NA
+        return path
+    path["profit_to_close"] = settle - pd.to_numeric(path["mid"], errors="coerce")
+    return path
+
+
+def paths_with_close_profit(paths, summary):
+    """Fill profit_to_close from the saved win flag. Used when redrawing."""
+    if not paths or summary is None or summary.empty or "won" not in summary.columns:
+        return paths
+    won_by_rank = {}
+    for _, row in summary.iterrows():
+        try:
+            won_by_rank[int(row["rank"])] = row["won"]
+        except (TypeError, ValueError):
+            continue
+    updated = []
+    for frame in paths:
+        if frame is None or frame.empty or "rank" not in frame.columns:
+            updated.append(frame)
+            continue
+        rank = pd.to_numeric(frame["rank"], errors="coerce").iloc[0]
+        if pd.isna(rank):
+            updated.append(frame)
+            continue
+        updated.append(attach_close_profit(frame, won_by_rank.get(int(rank))))
+    return updated
+
+
 def add_path_features(frame):
     if frame.empty:
         frame = frame.copy()
@@ -1689,7 +1756,7 @@ def analyze(find_text="top10"):
             score_label = ""
             if team_score is not None:
                 score_label = f" {team_score}-{opponent_score}"
-            plot_path = path.copy()
+            plot_path = attach_close_profit(path, won)
             plot_path["team"] = item["name"]
             plot_path["rank"] = item["rank"]
             plot_path["label"] = f"{item['name']} vs {opponent}{score_label}"
@@ -1868,7 +1935,7 @@ def analyze_props(each, stats):
                 }
             )
         if not path.empty:
-            plot_path = zero_when_box_is_zero(path, final).copy()
+            plot_path = attach_close_profit(zero_when_box_is_zero(path, final), won)
             plot_path["team"] = item["name"]
             plot_path["rank"] = item["rank"]
             plot_path["label"] = label
@@ -1970,6 +2037,7 @@ SHARED_COLUMN_DOCS = {
     ("*", "best_bid"): "Highest buy price with size still posted in that 5-minute window.",
     ("*", "best_ask"): "Lowest sell price with size still posted in that 5-minute window.",
     ("*", "mid"): "Average of best bid and best ask. When only one side is present, that side's price.",
+    ("price_paths.csv", "profit_to_close"): "Profit per share of buying at this bin's mid and holding to settlement. The contract pays 1 when the charted outcome won and 0 when it lost, so a buy at 0.40 that wins is 0.60. Positive means that buyer made money. Blank when the market has no settlement. The order book is not a trade tape, so this is one share at the mid, not a matched fill.",
     ("*", "hours_from_tip"): "Hours after the listed tip. Negative values are before tip.",
     ("*", "variance_score"): "Standard deviation of the mid over the trailing 30 minutes, which is 6 bins. Blank until 3 bins exist.",
     ("*", "spread_width"): "Best ask minus best bid in that bin.",
@@ -2112,6 +2180,7 @@ def finish_run(summaries, paths, alternates, results, order_frames, columns):
         documented.append(("large_orders.csv", list(orders.columns)))
     write_data_dictionary(documented)
     plot_paths(paths)
+    plot_close_profit(paths)
     plot_variance(summary_frame)
     plot_variance_paths(paths)
     plot_variance_vs_margin(summary_frame)
@@ -2163,9 +2232,13 @@ def redraw():
         prices = pd.read_csv(price_path)
         for _, part in prices.groupby("rank", sort=True):
             paths.append(part.reset_index(drop=True))
+        paths = paths_with_close_profit(paths, summary)
+        if paths:
+            pd.concat(paths, ignore_index=True).to_csv(price_path, index=False)
     alternate_path = OUTPUT / "alternate_spreads.csv"
     alternates = pd.read_csv(alternate_path) if alternate_path.exists() else pd.DataFrame()
     plot_paths(paths)
+    plot_close_profit(paths)
     plot_variance(summary)
     plot_variance_paths(paths)
     plot_variance_vs_margin(summary)
@@ -2321,6 +2394,7 @@ def paths_by_rank(paths):
             "spread_width",
             "best_bid",
             "best_ask",
+            "profit_to_close",
             "stat_value",
             "prop_line",
             "final_stat",
@@ -2332,6 +2406,36 @@ def paths_by_rank(paths):
                 frame[column] = pd.to_numeric(frame[column], errors="coerce")
         grouped[int(frame["rank"].iloc[0])] = frame
     return grouped
+
+
+def plot_close_profit(paths):
+    fig, axes, count, cols = grid_for(sharey=True)
+    by_rank = paths_by_rank(paths)
+    for axis, panel in zip(axes, ACTIVE_PANELS):
+        frame = by_rank.get(panel["rank"])
+        if frame is None:
+            draw_empty(axis, panel)
+            continue
+        profit = frame["profit_to_close"] if "profit_to_close" in frame else pd.Series(dtype=float)
+        profit = pd.to_numeric(profit, errors="coerce")
+        if profit.dropna().empty:
+            draw_empty(axis, panel, "No settlement for this market")
+            axis.set_ylim(-1, 1)
+            continue
+        axis.plot(frame["hours_from_tip"], profit, color="#1f4e79", linewidth=1.4)
+        axis.axvline(0, color="#b0b0b0", linewidth=0.8)
+        axis.axhline(0, color="#b0b0b0", linewidth=0.8)
+        axis.set_ylim(-1, 1)
+        title = frame["label"].iloc[0] if "label" in frame else panel["name"]
+        axis.set_title(f"{panel['rank']}. {title}", loc="left", fontsize=9)
+        axis.grid(axis="y", color="#eeeeee")
+    finish_grid(
+        fig, axes, count, cols,
+        "Hours from listed tip",
+        "Profit per share",
+        "Buy at the five-minute mid and hold to settlement",
+        "profit_to_close.png",
+    )
 
 
 def plot_variance_paths(paths):

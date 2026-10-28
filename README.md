@@ -225,6 +225,7 @@ The run reads six hours before the listed tip through three hours after it. A bu
 | `market_paths.png` | Win price, the highest-volume spread, and the Over on the highest-volume game total. |
 | `alternate_spreads.png` | Pregame price of the four most traded spreads, using the point line from that team's side. |
 | `bid_ask_width.png` | Ask minus bid, every five minutes. |
+| `profit_to_close.png` | Profit per share of buying at each five-minute mid and holding until the contract pays 0 or 1. Above zero, that buyer made money. |
 | `calibration.png` | Last mid before tip against the Polymarket resolution (won or lost). |
 | `moneyline_vs_spread.png` | That same pregame win price against the highest-volume spread. |
 | `summary.csv` | One row per game, including the variance scores, the ESPN margin, and the game total. |
@@ -235,6 +236,8 @@ The run reads six hours before the listed tip through three hours after it. A bu
 | `large_order_counts.png` | How many of those sizes each game had, how many the price followed, and how many also led a score. |
 | `large_orders.csv` | The rows behind those two charts. There is no wallet on them. |
 | `DATA_DICTIONARY.md` | Column-by-column definitions of the CSVs in this folder. |
+
+`profit_to_close` on each five-minute row is the profit per share of buying at that bin's mid and holding to settlement. The contract pays 1 when the charted outcome won and 0 when it lost, so a buy at 0.40 that wins is worth 0.60. The hourly files are the order book, not a tape of matched trades, so this is one share at the mid rather than a real fill. `--plots-only` fills the column from the saved `won` flag and writes `profit_to_close.png`. It does not download the hourly files again.
 
 The variance score is high while the win price is moving around, and it falls once the price sits still near 0 or 1. A blowout that runs the price from a coin flip to 0.95 in one smooth stretch still produces a high score during that run. A close game that keeps crossing back and forth stays high for longer. `variance_score_early` and `variance_score_late` in `summary.csv` split the first 2.5 hours after tip into two halves, which is the check for whether the score rises as the game goes on. `minutes_to_decided` is how many minutes after tip the win price first reaches 0.90 or 0.10.
 

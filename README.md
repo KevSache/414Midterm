@@ -287,7 +287,7 @@ The default keeps up to 10 fights that have matched volume of at least 100 and a
 The profit of buying one share at a five-minute mid and holding to settlement is settlement minus that mid. Inside one market the best time to buy is the bin where the mid was lowest, because settlement does not change. The script records that time. The line it fits is a different object: every bin, after each market's average profit is removed,
 
 ```text
-profit = market effect + beta * hours from tip
+profit = market effect + beta * hours on the clock
 ```
 
 beta is the change in expected profit per share from waiting one more hour. A beta near zero, with the 95% interval inside about 2 cents an hour, means there is no practical straight-line relationship. That does not rule out a best time in the middle of the window. The half-hour averages in the same folder are that check. Standard errors are clustered by game, so several prop lines from one game count as one game.
@@ -299,6 +299,12 @@ python examples/optimal_time.py
 ```
 
 The run reads each distinct hour from six hours before tip through three hours after, once. For the completed games in this extract that is a few hundred hours. Results land in `outputs/nba/optimal_time/`. Games and props are written separately, so the files are `games_accuracy_by_time.csv`, `props_prediction_accuracy.png`, and the same pair of names for the other sample. A second run reuses `cache/` in that folder. An hour that failed to download is not cached, so the next run tries it again.
+
+The same script scores UFC when you pass `--ufc`. That run does not use the top-10 fight cutoff. It keeps every fight winner whose listed end falls in the parquet window, and every fight-level distance, method, and round-total market with matched volume above zero. Fighter-specific props are left out. The clock is hours from the listed market end, not from the bell. That end is one timestamp for the whole card. The window is eight hours before it through two hours after. Fight winners and side markets are written separately under `outputs/ufc/optimal_time/`, as `fights_` and `sides_` files. The NBA cache is not reused, because an hour file cached for NBA only contains the NBA tokens.
+
+```bash
+python examples/optimal_time.py --ufc
+```
 
 ## Update your local copy
 

@@ -8,3 +8,4 @@ __pycache__/
 .DS_Store
 *.parquet
 outputs/nba/optimal_time/cache/
+outputs/ufc/optimal_time/cache/

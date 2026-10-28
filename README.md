@@ -260,6 +260,22 @@ The price, variance, bid-ask gap, and large-order charts are the Over price. A p
 
 The class database does not store the point margin. `won` is the Polymarket resolution, and the score, quarter lines, and margin come from ESPN. `markets.best_bid` is the latest snapshot, not the history, so the price charts come from the Parquet files. A game winner is charted only when its token was in the order book and its matched volume is at least 1,000. A prop is charted when its token was in the order book and its matched volume is above zero.
 
+## UFC fights
+
+`examples/ufc_analysis.py` is a separate pass for UFC fight winners. It does not change the NBA charts. A fight slug looks like `ufc-cir-ale30-2026-06-14`, and the two outcomes are the two fighters. The charted price is the first fighter.
+
+The listed end in `markets.end_date` is the same clock time for every bout on a card, about 04:00 UTC the morning after the date in the slug. It is not the bell. ESPN's scoreboard does not publish a separate start for each bout, so the charts use hours from that listed end. The saved window is the eight hours before it through the two hours after, which covers a normal card.
+
+ESPN supplies the winner, the method, the round, and the clock. Polymarket's resolution is the win flag when that row exists. A listing whose two names are not the two fighters on the ESPN card is left unmatched. That is usually an opponent change, and the script does not borrow the result of a different pairing. For each kept fight the script also reads the fight-level KO/TKO, submission, decision, and go-the-distance markets, and the round total with the most matched volume.
+
+```bash
+python examples/ufc_analysis.py
+python examples/ufc_analysis.py --find top5
+python examples/ufc_analysis.py --plots-only
+```
+
+The default keeps up to 10 fights that have matched volume of at least 100 and a posted book, ranked so both are high. Results land in `outputs/ufc/`. A full run reads the hourly files around each card. Fights before the Parquet files begin (May 30, 2026) have no order book to read. `--plots-only` redraws the charts from the CSVs already in that folder.
+
 ## Is there a better time to bet?
 
 `examples/optimal_time.py` asks that with every completed game winner, and with every points, assists, and rebounds line that has matched volume above zero. It does not use the top-10 cutoff or the 1,000 volume floor.

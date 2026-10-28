@@ -57,6 +57,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import psycopg2
 
+import prediction_score as predict
+
 CONNECTION = (
     "postgresql://polymarketdatabase.merbqatlxbrcvtbnuaqe:PolymarketData2026!"
     "@aws-0-us-west-2.pooler.supabase.com:6543/postgres?sslmode=require"
@@ -1997,6 +1999,8 @@ FILE_INTRO = {
     "alternate_spreads.csv": "One row per extra line read from the same hours.",
     "game_results.csv": "The summary rows for panels that had an order book. The columns match summary.csv.",
     "large_orders.csv": "One row per unusually large posted size on the charted token. There is no wallet.",
+    "accuracy_by_time.csv": "One row per five-minute mark. Each market is counted once at that mark.",
+    "accuracy_by_price.csv": "One row per 10-point price band. A market quoted in the band is counted once, and the win rate is how often the charted outcome happened.",
 }
 
 
@@ -2039,6 +2043,27 @@ SHARED_COLUMN_DOCS = {
     ("*", "best_ask"): "Lowest sell price with size still posted in that 5-minute window.",
     ("*", "mid"): "Average of best bid and best ask. When only one side is present, that side's price.",
     ("price_paths.csv", "profit_to_close"): "Profit per share of buying at this bin's mid and holding to settlement. The contract pays 1 when the charted outcome won and 0 when it lost, so a buy at 0.40 that wins is 0.60. Positive means that buyer made money. Blank when the market has no settlement. The order book is not a trade tape, so this is one share at the mid, not a matched fill.",
+    ("price_paths.csv", "win_chance"): "The five-minute mid. This is the market's probability that the charted outcome happens.",
+    ("price_paths.csv", "outcome"): "1 when the charted outcome happened, 0 when it did not. Blank when the market has no settlement.",
+    ("price_paths.csv", "called_win"): "1 when the mid is above 0.5, 0 when it is below. Blank at exactly 0.5.",
+    ("price_paths.csv", "call_correct"): "1 when that call matches the final result, 0 when it does not.",
+    ("price_paths.csv", "brier"): "Squared gap between the win chance and the outcome. A coin flip averages 0.25.",
+    ("accuracy_by_time.csv", "minutes_from_tip"): "Five-minute mark relative to the listed tip. Negative is before tip.",
+    ("accuracy_by_time.csv", "hours_from_tip"): "That same mark in hours.",
+    ("accuracy_by_time.csv", "markets"): "Markets with a quote at that mark. Each market is counted once.",
+    ("accuracy_by_time.csv", "mean_win_chance"): "Average mid at that mark, one number per market.",
+    ("accuracy_by_time.csv", "actual_win_rate"): "Share of those markets in which the charted outcome happened.",
+    ("accuracy_by_time.csv", "calls"): "Quotes that were not exactly 0.5.",
+    ("accuracy_by_time.csv", "call_hit_rate"): "Share of those calls that matched the final result.",
+    ("accuracy_by_time.csv", "brier"): "Average squared gap between the win chance and the outcome.",
+    ("accuracy_by_price.csv", "band_low"): "Low end of the price band. 0.50 means prices from 0.50 up to 0.60.",
+    ("accuracy_by_price.csv", "band_high"): "High end of the price band.",
+    ("accuracy_by_price.csv", "band"): "Price band label, such as 0.50–0.60.",
+    ("accuracy_by_price.csv", "markets"): "Markets with at least one quote in the band. Each market is counted once.",
+    ("accuracy_by_price.csv", "bins"): "Five-minute rows in the band before that one-per-market collapse.",
+    ("accuracy_by_price.csv", "mean_win_chance"): "Average mid in the band, one number per market. The win rate on the next column should sit near this price.",
+    ("accuracy_by_price.csv", "actual_win_rate"): "Share of those markets in which the charted outcome happened.",
+    ("accuracy_by_price.csv", "brier"): "Average squared gap between the win chance and the outcome.",
     ("*", "hours_from_tip"): "Hours after the listed tip. Negative values are before tip.",
     ("*", "variance_score"): "Standard deviation of the mid over the trailing 30 minutes, which is 6 bins. Blank until 3 bins exist.",
     ("*", "spread_width"): "Best ask minus best bid in that bin.",
@@ -2164,7 +2189,15 @@ def finish_run(summaries, paths, alternates, results, order_frames, columns):
     orders = pd.concat(order_frames, ignore_index=True) if order_frames else pd.DataFrame()
     path_frame = pd.concat(paths, ignore_index=True) if paths else pd.DataFrame()
     summary_frame.to_csv(OUTPUT / "summary.csv", index=False)
-    if not path_frame.empty:
+    if not path_frame.empty and "mid" in path_frame.columns:
+        path_frame = predict.write_bundle(path_frame, summary_frame, OUTPUT, clock="hours_from_tip", subject="market")
+        predict.plot_prediction(
+            path_frame,
+            OUTPUT,
+            clock="hours_from_tip",
+            xlabel="Hours from listed tip",
+            outcome_label="Charted outcome happened",
+        )
         path_frame.to_csv(OUTPUT / "price_paths.csv", index=False)
     if not alternate_frame.empty:
         alternate_frame.to_csv(OUTPUT / "alternate_spreads.csv", index=False)
@@ -2179,6 +2212,10 @@ def finish_run(summaries, paths, alternates, results, order_frames, columns):
     documented.append(("game_results.csv", list(result_frame.columns)))
     if not orders.empty:
         documented.append(("large_orders.csv", list(orders.columns)))
+    for name in ("accuracy_by_time.csv", "accuracy_by_price.csv"):
+        path = OUTPUT / name
+        if path.exists():
+            documented.append((name, list(pd.read_csv(path, nrows=0).columns)))
     write_data_dictionary(documented)
     plot_paths(paths)
     plot_close_profit(paths)
@@ -2235,7 +2272,21 @@ def redraw():
             paths.append(part.reset_index(drop=True))
         paths = paths_with_close_profit(paths, summary)
         if paths:
-            pd.concat(paths, ignore_index=True).to_csv(price_path, index=False)
+            scored = predict.write_bundle(
+                pd.concat(paths, ignore_index=True),
+                summary,
+                OUTPUT,
+                clock="hours_from_tip",
+                subject="market",
+            )
+            predict.plot_prediction(
+                scored,
+                OUTPUT,
+                clock="hours_from_tip",
+                xlabel="Hours from listed tip",
+                outcome_label="Charted outcome happened",
+            )
+            scored.to_csv(price_path, index=False)
     alternate_path = OUTPUT / "alternate_spreads.csv"
     alternates = pd.read_csv(alternate_path) if alternate_path.exists() else pd.DataFrame()
     plot_paths(paths)
@@ -2254,7 +2305,15 @@ def redraw():
     plot_large_orders(paths, orders)
     plot_large_order_counts(summary, orders)
     documented = []
-    for name in ("summary.csv", "price_paths.csv", "alternate_spreads.csv", "game_results.csv", "large_orders.csv"):
+    for name in (
+        "summary.csv",
+        "price_paths.csv",
+        "alternate_spreads.csv",
+        "game_results.csv",
+        "large_orders.csv",
+        "accuracy_by_time.csv",
+        "accuracy_by_price.csv",
+    ):
         path = OUTPUT / name
         if not path.exists():
             continue

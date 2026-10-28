@@ -1,0 +1,7 @@
+sample,outcome,rows,markets,bouts,r_squared,between_market_share
+all live,log_spread,5479,32,18,0.653,0.755
+all live,log_depth,5479,32,18,0.627,0.626
+all live,log_updates,5479,32,18,0.645,0.651
+winner,log_spread,3074,18,18,0.307,0.125
+winner,log_depth,3074,18,18,0.497,0.442
+winner,log_updates,3074,18,18,0.384,0.344

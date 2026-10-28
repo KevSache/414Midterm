@@ -1,0 +1,178 @@
+token,slug,bout_id,card_day,market_type,segment,main_event,volume_clob,post_usd,pull_usd,fill_usd,updates,live
+0,ufc-aie-sea1-2026-06-14,2026-06-14#04,2026-06-14,winner,Main Card,False,1363.911733,0.0,0.0,0.0,0,False
+1,ufc-aie-sea1-2026-06-14-go-the-distance,2026-06-14#04,2026-06-14,distance,Main Card,False,,0.0,0.0,0.0,0,False
+2,ufc-aie-sea1-2026-06-14-omalley-win-by-ko-tko,2026-06-14#04,2026-06-14,fighter_ko,Main Card,False,,0.0,0.0,0.0,0,False
+3,ufc-aie-sea1-2026-06-14-totals-0pt5,2026-06-14#04,2026-06-14,rounds_ou,Main Card,False,,0.0,0.0,0.0,0,False
+4,ufc-aie-sea1-2026-06-14-totals-1pt5,2026-06-14#04,2026-06-14,rounds_ou,Main Card,False,,0.0,0.0,0.0,0,False
+5,ufc-aie-sea1-2026-06-14-totals-2pt5,2026-06-14#04,2026-06-14,rounds_ou,Main Card,False,,0.0,0.0,0.0,0,False
+6,ufc-aie-sea1-2026-06-14-win-by-ko-tko,2026-06-14#04,2026-06-14,fight_ko,Main Card,False,,0.0,0.0,0.0,0,False
+7,ufc-aie-sea1-2026-06-14-win-by-submission,2026-06-14#04,2026-06-14,fight_sub,Main Card,False,,0.0,0.0,0.0,0,False
+8,ufc-aie-sea1-2026-06-14-zahabi-win-by-ko-tko,2026-06-14#04,2026-06-14,fighter_ko,Main Card,False,,0.0,0.0,0.0,0,False
+9,ufc-ari1-ket1-2026-06-06,2026-06-06#00,2026-06-06,winner,Prelims,False,16.980232,74389.14,740.8027999999999,0.0,778,True
+10,ufc-ari1-ket1-2026-06-06-carnelossi-win-by-ko-tko,2026-06-06#00,2026-06-06,fighter_ko,Prelims,False,,0.0,0.0,0.0,0,False
+11,ufc-ari1-ket1-2026-06-06-go-the-distance,2026-06-06#00,2026-06-06,distance,Prelims,False,,0.0,0.0,0.0,0,False
+12,ufc-ari1-ket1-2026-06-06-souza-win-by-ko-tko,2026-06-06#00,2026-06-06,fighter_ko,Prelims,False,,0.0,0.0,0.0,0,False
+13,ufc-ari1-ket1-2026-06-06-totals-0pt5,2026-06-06#00,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+14,ufc-ari1-ket1-2026-06-06-totals-1pt5,2026-06-06#00,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+15,ufc-ari1-ket1-2026-06-06-totals-2pt5,2026-06-06#00,2026-06-06,rounds_ou,Prelims,False,,63553.8424,3360.5488,70.29,816,True
+16,ufc-ari1-ket1-2026-06-06-win-by-ko-tko,2026-06-06#00,2026-06-06,fight_ko,Prelims,False,,0.0,0.0,0.0,0,False
+17,ufc-ari1-ket1-2026-06-06-win-by-submission,2026-06-06#00,2026-06-06,fight_sub,Prelims,False,,0.0,0.0,0.0,0,False
+18,ufc-bel-gab3-2026-06-06,2026-06-06#11,2026-06-06,winner,Main Card,True,3540.987386,30329401.8079,4345002.9115,186291.4908,106762,True
+19,ufc-bel-gab3-2026-06-06-bonfim-win-by-ko-tko,2026-06-06#11,2026-06-06,fighter_ko,Main Card,True,,0.0,0.0,0.0,0,False
+20,ufc-bel-gab3-2026-06-06-go-the-distance,2026-06-06#11,2026-06-06,distance,Main Card,True,,0.0,0.0,0.0,0,False
+21,ufc-bel-gab3-2026-06-06-muhammad-win-by-ko-tko,2026-06-06#11,2026-06-06,fighter_ko,Main Card,True,,0.0,0.0,0.0,0,False
+22,ufc-bel-gab3-2026-06-06-totals-0pt5,2026-06-06#11,2026-06-06,rounds_ou,Main Card,True,,0.0,0.0,0.0,0,False
+23,ufc-bel-gab3-2026-06-06-totals-1pt5,2026-06-06#11,2026-06-06,rounds_ou,Main Card,True,,0.0,0.0,0.0,0,False
+24,ufc-bel-gab3-2026-06-06-totals-2pt5,2026-06-06#11,2026-06-06,rounds_ou,Main Card,True,,0.0,0.0,0.0,0,False
+25,ufc-bel-gab3-2026-06-06-totals-3pt5,2026-06-06#11,2026-06-06,rounds_ou,Main Card,True,,97703.7518,55915.3957,87.1212,224,True
+26,ufc-bel-gab3-2026-06-06-totals-4pt5,2026-06-06#11,2026-06-06,rounds_ou,Main Card,True,,0.0,0.0,0.0,0,False
+27,ufc-bel-gab3-2026-06-06-win-by-ko-tko,2026-06-06#11,2026-06-06,fight_ko,Main Card,True,638.657892,0.0,0.0,0.0,0,False
+28,ufc-bel-gab3-2026-06-06-win-by-submission,2026-06-06#11,2026-06-06,fight_sub,Main Card,True,310.543611,0.0,0.0,0.0,0,False
+36,ufc-bre1-edm-2026-06-06,2026-06-06#10,2026-06-06,winner,Main Card,False,684936.859349,16739100.3939,2992033.9734,53966.2189,85992,True
+37,ufc-bre1-edm-2026-06-06-allen-win-by-ko-tko,2026-06-06#10,2026-06-06,fighter_ko,Main Card,False,,0.0,0.0,0.0,0,False
+38,ufc-bre1-edm-2026-06-06-go-the-distance,2026-06-06#10,2026-06-06,distance,Main Card,False,,0.0,0.0,0.0,0,False
+39,ufc-bre1-edm-2026-06-06-shahbazyan-win-by-ko-tko,2026-06-06#10,2026-06-06,fighter_ko,Main Card,False,,0.0,0.0,0.0,0,False
+40,ufc-bre1-edm-2026-06-06-totals-0pt5,2026-06-06#10,2026-06-06,rounds_ou,Main Card,False,,0.0,0.0,0.0,0,False
+41,ufc-bre1-edm-2026-06-06-totals-1pt5,2026-06-06#10,2026-06-06,rounds_ou,Main Card,False,420.110438,0.0,0.0,0.0,0,False
+42,ufc-bre1-edm-2026-06-06-totals-2pt5,2026-06-06#10,2026-06-06,rounds_ou,Main Card,False,,0.0,0.0,0.0,0,False
+43,ufc-bre1-edm-2026-06-06-win-by-ko-tko,2026-06-06#10,2026-06-06,fight_ko,Main Card,False,,0.0,0.0,0.0,0,False
+44,ufc-bre1-edm-2026-06-06-win-by-submission,2026-06-06#10,2026-06-06,fight_sub,Main Card,False,,0.0,0.0,0.0,0,False
+45,ufc-bru-ed-2026-06-06,2026-06-06#04,2026-06-06,winner,Prelims,False,1971.960127,5063114.3705,1260958.539,111735.6688,14629,True
+46,ufc-bru-ed-2026-06-06-chairez-win-by-ko-tko,2026-06-06#04,2026-06-06,fighter_ko,Prelims,False,,0.0,0.0,0.0,0,False
+47,ufc-bru-ed-2026-06-06-go-the-distance,2026-06-06#04,2026-06-06,distance,Prelims,False,,0.0,0.0,0.0,0,False
+48,ufc-bru-ed-2026-06-06-silva-win-by-ko-tko,2026-06-06#04,2026-06-06,fighter_ko,Prelims,False,217.099704,0.0,0.0,0.0,0,False
+49,ufc-bru-ed-2026-06-06-totals-0pt5,2026-06-06#04,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+50,ufc-bru-ed-2026-06-06-totals-1pt5,2026-06-06#04,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+51,ufc-bru-ed-2026-06-06-totals-2pt5,2026-06-06#04,2026-06-06,rounds_ou,Prelims,False,,164645.6109,33928.6226,9.75,751,True
+52,ufc-bru-ed-2026-06-06-win-by-ko-tko,2026-06-06#04,2026-06-06,fight_ko,Prelims,False,39.37,0.0,0.0,0.0,0,False
+53,ufc-bru-ed-2026-06-06-win-by-submission,2026-06-06#04,2026-06-06,fight_sub,Prelims,False,359.557141,0.0,0.0,0.0,0,False
+54,ufc-bry1-san6-2026-06-06,2026-06-06#08,2026-06-06,winner,Main Card,False,232.42378,13255949.7464,2129295.5326,104072.962,58685,True
+55,ufc-bry1-san6-2026-06-06-go-the-distance,2026-06-06#08,2026-06-06,distance,Main Card,False,,0.0,0.0,0.0,0,False
+56,ufc-bry1-san6-2026-06-06-luna-win-by-ko-tko,2026-06-06#08,2026-06-06,fighter_ko,Main Card,False,1274.845323,0.0,0.0,0.0,0,False
+57,ufc-bry1-san6-2026-06-06-mitchell-win-by-ko-tko,2026-06-06#08,2026-06-06,fighter_ko,Main Card,False,,0.0,0.0,0.0,0,False
+58,ufc-bry1-san6-2026-06-06-totals-0pt5,2026-06-06#08,2026-06-06,rounds_ou,Main Card,False,,0.0,0.0,0.0,0,False
+59,ufc-bry1-san6-2026-06-06-totals-1pt5,2026-06-06#08,2026-06-06,rounds_ou,Main Card,False,,0.0,0.0,0.0,0,False
+60,ufc-bry1-san6-2026-06-06-totals-2pt5,2026-06-06#08,2026-06-06,rounds_ou,Main Card,False,,0.0,0.0,0.0,0,False
+61,ufc-bry1-san6-2026-06-06-win-by-ko-tko,2026-06-06#08,2026-06-06,fight_ko,Main Card,False,,0.0,0.0,0.0,0,False
+62,ufc-bry1-san6-2026-06-06-win-by-submission,2026-06-06#08,2026-06-06,fight_sub,Main Card,False,325.633155,0.0,0.0,0.0,0,False
+63,ufc-cir-ale30-2026-06-14,2026-06-14#05,2026-06-14,winner,Main Card,False,5441490.00736503,53299829.1677,7001680.0545,563248.5176,118742,True
+64,ufc-cir-ale30-2026-06-14-gane-win-by-ko-tko,2026-06-14#05,2026-06-14,fighter_ko,Main Card,False,24590.083649,128073.5558,22011.2063,15.275,2547,True
+65,ufc-cir-ale30-2026-06-14-go-the-distance,2026-06-14#05,2026-06-14,distance,Main Card,False,,0.0,0.0,0.0,0,False
+66,ufc-cir-ale30-2026-06-14-pereira-win-by-ko-tko,2026-06-14#05,2026-06-14,fighter_ko,Main Card,False,49414.001207,0.0,0.0,0.0,0,False
+67,ufc-cir-ale30-2026-06-14-totals-0pt5,2026-06-14#05,2026-06-14,rounds_ou,Main Card,False,661.783352,0.0,0.0,0.0,0,False
+68,ufc-cir-ale30-2026-06-14-totals-1pt5,2026-06-14#05,2026-06-14,rounds_ou,Main Card,False,617.308526,0.0,0.0,0.0,0,False
+69,ufc-cir-ale30-2026-06-14-totals-2pt5,2026-06-14#05,2026-06-14,rounds_ou,Main Card,False,,226945.4353,45279.8937,1327.01,3335,True
+70,ufc-cir-ale30-2026-06-14-totals-3pt5,2026-06-14#05,2026-06-14,rounds_ou,Main Card,False,,0.0,0.0,0.0,0,False
+71,ufc-cir-ale30-2026-06-14-totals-4pt5,2026-06-14#05,2026-06-14,rounds_ou,Main Card,False,365.16222,0.0,0.0,0.0,0,False
+72,ufc-cir-ale30-2026-06-14-win-by-ko-tko,2026-06-14#05,2026-06-14,fight_ko,Main Card,False,8162.286161,0.0,0.0,0.0,0,False
+73,ufc-cir-ale30-2026-06-14-win-by-submission,2026-06-14#05,2026-06-14,fight_sub,Main Card,False,4298.325618,0.0,0.0,0.0,0,False
+74,ufc-der-jos52-2026-06-14,2026-06-14#03,2026-06-14,winner,Main Card,False,2200323.21374399,62793020.1599,10100461.7796,55020.6017,145173,True
+75,ufc-der-jos52-2026-06-14-go-the-distance,2026-06-14#03,2026-06-14,distance,Main Card,False,30902.799965,0.0,0.0,0.0,0,False
+76,ufc-der-jos52-2026-06-14-hokit-win-by-ko-tko,2026-06-14#03,2026-06-14,fighter_ko,Main Card,False,57428.782899,0.0,0.0,0.0,0,False
+77,ufc-der-jos52-2026-06-14-lewis-win-by-ko-tko,2026-06-14#03,2026-06-14,fighter_ko,Main Card,False,7594.45266299999,0.0,0.0,0.0,0,False
+78,ufc-der-jos52-2026-06-14-totals-0pt5,2026-06-14#03,2026-06-14,rounds_ou,Main Card,False,,0.0,0.0,0.0,0,False
+79,ufc-der-jos52-2026-06-14-totals-1pt5,2026-06-14#03,2026-06-14,rounds_ou,Main Card,False,,0.0,0.0,0.0,0,False
+80,ufc-der-jos52-2026-06-14-totals-2pt5,2026-06-14#03,2026-06-14,rounds_ou,Main Card,False,1138.383237,0.0,0.0,0.0,0,False
+81,ufc-der-jos52-2026-06-14-win-by-ko-tko,2026-06-14#03,2026-06-14,fight_ko,Main Card,False,,0.0,0.0,0.0,0,False
+82,ufc-der-jos52-2026-06-14-win-by-submission,2026-06-14#03,2026-06-14,fight_sub,Main Card,False,,0.0,0.0,0.0,0,False
+83,ufc-far-tom14-2026-06-06,2026-06-06#09,2026-06-06,winner,Prelims,False,287.431005,11520673.4379,2580762.2783,11343.913,73625,True
+84,ufc-far-tom14-2026-06-06-go-the-distance,2026-06-06#09,2026-06-06,distance,Prelims,False,,20573.8982,6082.7113,30.04,840,True
+85,ufc-far-tom14-2026-06-06-nolan-win-by-ko-tko,2026-06-06#09,2026-06-06,fighter_ko,Prelims,False,,0.0,0.0,0.0,0,False
+86,ufc-far-tom14-2026-06-06-totals-0pt5,2026-06-06#09,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+87,ufc-far-tom14-2026-06-06-totals-1pt5,2026-06-06#09,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+88,ufc-far-tom14-2026-06-06-totals-2pt5,2026-06-06#09,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+89,ufc-far-tom14-2026-06-06-win-by-ko-tko,2026-06-06#09,2026-06-06,fight_ko,Prelims,False,,0.0,0.0,0.0,0,False
+90,ufc-far-tom14-2026-06-06-win-by-submission,2026-06-06#09,2026-06-06,fight_sub,Prelims,False,,0.0,0.0,0.0,0,False
+91,ufc-far-tom14-2026-06-06-ziam-win-by-ko-tko,2026-06-06#09,2026-06-06,fighter_ko,Prelims,False,,0.0,0.0,0.0,0,False
+100,ufc-joa4-jor10-2026-06-06,2026-06-06#02,2026-06-06,winner,Prelims,False,1663.466288,6361157.8184,790113.8689,53663.7012,16776,True
+101,ufc-joa4-jor10-2026-06-06-brito-win-by-ko-tko,2026-06-06#02,2026-06-06,fighter_ko,Prelims,False,,0.0,0.0,0.0,0,False
+102,ufc-joa4-jor10-2026-06-06-go-the-distance,2026-06-06#02,2026-06-06,distance,Prelims,False,,0.0,0.0,0.0,0,False
+103,ufc-joa4-jor10-2026-06-06-leavitt-win-by-ko-tko,2026-06-06#02,2026-06-06,fighter_ko,Prelims,False,,0.0,0.0,0.0,0,False
+104,ufc-joa4-jor10-2026-06-06-totals-0pt5,2026-06-06#02,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+105,ufc-joa4-jor10-2026-06-06-totals-1pt5,2026-06-06#02,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+106,ufc-joa4-jor10-2026-06-06-totals-2pt5,2026-06-06#02,2026-06-06,rounds_ou,Prelims,False,,120444.6498,23032.877,107.3,1260,True
+107,ufc-joa4-jor10-2026-06-06-win-by-ko-tko,2026-06-06#02,2026-06-06,fight_ko,Prelims,False,,0.0,0.0,0.0,0,False
+108,ufc-joa4-jor10-2026-06-06-win-by-submission,2026-06-06#02,2026-06-06,fight_sub,Prelims,False,,0.0,0.0,0.0,0,False
+109,ufc-jun4-iwo-2026-06-06,2026-06-06#07,2026-06-06,winner,Main Card,False,1004.56081,2982460.1365,1025978.9062,14304.001999999999,6908,True
+110,ufc-jun4-iwo-2026-06-06-baraniewski-win-by-ko-tko,2026-06-06#07,2026-06-06,fighter_ko,Main Card,False,,10806.303,4416.0457,0.0,143,True
+111,ufc-jun4-iwo-2026-06-06-go-the-distance,2026-06-06#07,2026-06-06,distance,Main Card,False,,0.0,0.0,0.0,0,False
+112,ufc-jun4-iwo-2026-06-06-tafa-win-by-ko-tko,2026-06-06#07,2026-06-06,fighter_ko,Main Card,False,,0.0,0.0,0.0,0,False
+113,ufc-jun4-iwo-2026-06-06-totals-0pt5,2026-06-06#07,2026-06-06,rounds_ou,Main Card,False,,10215.3178,8133.4956,0.0,51,True
+114,ufc-jun4-iwo-2026-06-06-totals-1pt5,2026-06-06#07,2026-06-06,rounds_ou,Main Card,False,77.423072,98399.9987,33419.0595,579.543,423,True
+115,ufc-jun4-iwo-2026-06-06-totals-2pt5,2026-06-06#07,2026-06-06,rounds_ou,Main Card,False,,0.0,0.0,0.0,0,False
+116,ufc-jun4-iwo-2026-06-06-win-by-ko-tko,2026-06-06#07,2026-06-06,fight_ko,Main Card,False,,0.0,0.0,0.0,0,False
+117,ufc-jun4-iwo-2026-06-06-win-by-submission,2026-06-06#07,2026-06-06,fight_sub,Main Card,False,,0.0,0.0,0.0,0,False
+118,ufc-jus3-ili1-2026-06-14,2026-06-14#06,2026-06-14,winner,Main Card,True,15529.155239,213351699.5929,37141284.6078,379496.7665,178560,True
+119,ufc-jus3-ili1-2026-06-14-gaethje-win-by-ko-tko,2026-06-14#06,2026-06-14,fighter_ko,Main Card,True,6.666665,0.0,0.0,0.0,0,False
+120,ufc-jus3-ili1-2026-06-14-go-the-distance,2026-06-14#06,2026-06-14,distance,Main Card,True,2.083325,0.0,0.0,0.0,0,False
+121,ufc-jus3-ili1-2026-06-14-topuria-win-by-ko-tko,2026-06-14#06,2026-06-14,fighter_ko,Main Card,True,491.521722,203666.0206,55859.2748,1238.6573,4621,True
+122,ufc-jus3-ili1-2026-06-14-totals-0pt5,2026-06-14#06,2026-06-14,rounds_ou,Main Card,True,,0.0,0.0,0.0,0,False
+123,ufc-jus3-ili1-2026-06-14-totals-1pt5,2026-06-14#06,2026-06-14,rounds_ou,Main Card,True,,746078.5182,225390.8934,13089.5053,4277,True
+124,ufc-jus3-ili1-2026-06-14-totals-2pt5,2026-06-14#06,2026-06-14,rounds_ou,Main Card,True,,0.0,0.0,0.0,0,False
+125,ufc-jus3-ili1-2026-06-14-totals-3pt5,2026-06-14#06,2026-06-14,rounds_ou,Main Card,True,,0.0,0.0,0.0,0,False
+126,ufc-jus3-ili1-2026-06-14-totals-4pt5,2026-06-14#06,2026-06-14,rounds_ou,Main Card,True,661.80905,0.0,0.0,0.0,0,False
+127,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,2026-06-14#06,2026-06-14,fight_ko,Main Card,True,2.7027,454720.9933,26324.4088,2610.131,9152,True
+128,ufc-jus3-ili1-2026-06-14-win-by-submission,2026-06-14#06,2026-06-14,fight_sub,Main Card,True,,0.0,0.0,0.0,0,False
+129,ufc-kyl3-bon-2026-06-14,2026-06-14#01,2026-06-14,winner,Main Card,False,2656.579008,6182662.1185,1007215.8387,37071.988,28216,True
+130,ufc-kyl3-bon-2026-06-14-daukaus-win-by-ko-tko,2026-06-14#01,2026-06-14,fighter_ko,Main Card,False,,0.0,0.0,0.0,0,False
+131,ufc-kyl3-bon-2026-06-14-go-the-distance,2026-06-14#01,2026-06-14,distance,Main Card,False,,0.0,0.0,0.0,0,False
+132,ufc-kyl3-bon-2026-06-14-nickal-win-by-ko-tko,2026-06-14#01,2026-06-14,fighter_ko,Main Card,False,,0.0,0.0,0.0,0,False
+133,ufc-kyl3-bon-2026-06-14-totals-0pt5,2026-06-14#01,2026-06-14,rounds_ou,Main Card,False,,0.0,0.0,0.0,0,False
+134,ufc-kyl3-bon-2026-06-14-totals-1pt5,2026-06-14#01,2026-06-14,rounds_ou,Main Card,False,,0.0,0.0,0.0,0,False
+135,ufc-kyl3-bon-2026-06-14-totals-2pt5,2026-06-14#01,2026-06-14,rounds_ou,Main Card,False,,0.0,0.0,0.0,0,False
+136,ufc-kyl3-bon-2026-06-14-win-by-ko-tko,2026-06-14#01,2026-06-14,fight_ko,Main Card,False,,0.0,0.0,0.0,0,False
+137,ufc-kyl3-bon-2026-06-14-win-by-submission,2026-06-14#01,2026-06-14,fight_sub,Main Card,False,,0.0,0.0,0.0,0,False
+138,ufc-mar42-joh41-2026-06-06,2026-06-06#05,2026-06-06,winner,Prelims,False,6983.019906,6435511.8482,603095.4076,10671.4816,51817,True
+139,ufc-mar42-joh41-2026-06-06-go-the-distance,2026-06-06#05,2026-06-06,distance,Prelims,False,,0.0,0.0,0.0,0,False
+140,ufc-mar42-joh41-2026-06-06-mcghee-win-by-ko-tko,2026-06-06#05,2026-06-06,fighter_ko,Prelims,False,,0.0,0.0,0.0,0,False
+141,ufc-mar42-joh41-2026-06-06-totals-0pt5,2026-06-06#05,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+142,ufc-mar42-joh41-2026-06-06-totals-1pt5,2026-06-06#05,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+143,ufc-mar42-joh41-2026-06-06-totals-2pt5,2026-06-06#05,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+144,ufc-mar42-joh41-2026-06-06-win-by-ko-tko,2026-06-06#05,2026-06-06,fight_ko,Prelims,False,,0.0,0.0,0.0,0,False
+145,ufc-mar42-joh41-2026-06-06-win-by-submission,2026-06-06#05,2026-06-06,fight_sub,Prelims,False,,0.0,0.0,0.0,0,False
+146,ufc-mar42-joh41-2026-06-06-yannis-win-by-ko-tko,2026-06-06#05,2026-06-06,fighter_ko,Prelims,False,,0.0,0.0,0.0,0,False
+147,ufc-mat-ale35-2026-06-06,2026-06-06#06,2026-06-06,winner,Prelims,False,6.046499,4254668.6125,1258089.2097,27528.2957,23993,True
+148,ufc-mat-ale35-2026-06-06-costa-win-by-ko-tko,2026-06-06#06,2026-06-06,fighter_ko,Prelims,False,,0.0,0.0,0.0,0,False
+149,ufc-mat-ale35-2026-06-06-go-the-distance,2026-06-06#06,2026-06-06,distance,Prelims,False,,0.0,0.0,0.0,0,False
+150,ufc-mat-ale35-2026-06-06-schnell-win-by-ko-tko,2026-06-06#06,2026-06-06,fighter_ko,Prelims,False,108.87,0.0,0.0,0.0,0,False
+151,ufc-mat-ale35-2026-06-06-totals-0pt5,2026-06-06#06,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+152,ufc-mat-ale35-2026-06-06-totals-1pt5,2026-06-06#06,2026-06-06,rounds_ou,Prelims,False,91.928567,87665.4944,23750.1532,156.201,848,True
+153,ufc-mat-ale35-2026-06-06-totals-2pt5,2026-06-06#06,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+154,ufc-mat-ale35-2026-06-06-win-by-ko-tko,2026-06-06#06,2026-06-06,fight_ko,Prelims,False,,0.0,0.0,0.0,0,False
+155,ufc-mat-ale35-2026-06-06-win-by-submission,2026-06-06#06,2026-06-06,fight_sub,Prelims,False,,0.0,0.0,0.0,0,False
+165,ufc-mic12-mau4-2026-06-14,2026-06-14#02,2026-06-14,winner,Main Card,False,3486.226734,20588919.3432,2619832.7717,17690.985,68063,True
+166,ufc-mic12-mau4-2026-06-14-chandler-win-by-ko-tko,2026-06-14#02,2026-06-14,fighter_ko,Main Card,False,,0.0,0.0,0.0,0,False
+167,ufc-mic12-mau4-2026-06-14-go-the-distance,2026-06-14#02,2026-06-14,distance,Main Card,False,,0.0,0.0,0.0,0,False
+168,ufc-mic12-mau4-2026-06-14-ruffy-win-by-ko-tko,2026-06-14#02,2026-06-14,fighter_ko,Main Card,False,,0.0,0.0,0.0,0,False
+169,ufc-mic12-mau4-2026-06-14-totals-0pt5,2026-06-14#02,2026-06-14,rounds_ou,Main Card,False,,0.0,0.0,0.0,0,False
+170,ufc-mic12-mau4-2026-06-14-totals-1pt5,2026-06-14#02,2026-06-14,rounds_ou,Main Card,False,45695.65865,0.0,0.0,0.0,0,False
+171,ufc-mic12-mau4-2026-06-14-totals-2pt5,2026-06-14#02,2026-06-14,rounds_ou,Main Card,False,2052.493772,0.0,0.0,0.0,0,False
+172,ufc-mic12-mau4-2026-06-14-win-by-ko-tko,2026-06-14#02,2026-06-14,fight_ko,Main Card,False,,0.0,0.0,0.0,0,False
+173,ufc-mic12-mau4-2026-06-14-win-by-submission,2026-06-14#02,2026-06-14,fight_sub,Main Card,False,,0.0,0.0,0.0,0,False
+174,ufc-pri-che3-2026-06-06,2026-06-06#03,2026-06-06,winner,Prelims,False,68.545384,2645769.3723999998,615601.8803,44353.190599999994,9410,True
+175,ufc-pri-che3-2026-06-06-cachoeira-win-by-ko-tko,2026-06-06#03,2026-06-06,fighter_ko,Prelims,False,,0.0,0.0,0.0,0,False
+176,ufc-pri-che3-2026-06-06-chandler-win-by-ko-tko,2026-06-06#03,2026-06-06,fighter_ko,Prelims,False,,0.0,0.0,0.0,0,False
+177,ufc-pri-che3-2026-06-06-go-the-distance,2026-06-06#03,2026-06-06,distance,Prelims,False,,0.0,0.0,0.0,0,False
+178,ufc-pri-che3-2026-06-06-totals-0pt5,2026-06-06#03,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+179,ufc-pri-che3-2026-06-06-totals-1pt5,2026-06-06#03,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+180,ufc-pri-che3-2026-06-06-totals-2pt5,2026-06-06#03,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+181,ufc-pri-che3-2026-06-06-win-by-ko-tko,2026-06-06#03,2026-06-06,fight_ko,Prelims,False,,0.0,0.0,0.0,0,False
+182,ufc-pri-che3-2026-06-06-win-by-submission,2026-06-06#03,2026-06-06,fight_sub,Prelims,False,,0.0,0.0,0.0,0,False
+183,ufc-ste6-die4-2026-06-14,2026-06-14#00,2026-06-14,winner,Main Card,False,712.741864,30833874.0201,3048617.782,100206.5524,97883,True
+184,ufc-ste6-die4-2026-06-14-garcia-win-by-ko-tko,2026-06-14#00,2026-06-14,fighter_ko,Main Card,False,,0.0,0.0,0.0,0,False
+185,ufc-ste6-die4-2026-06-14-go-the-distance,2026-06-14#00,2026-06-14,distance,Main Card,False,,0.0,0.0,0.0,0,False
+186,ufc-ste6-die4-2026-06-14-lopes-win-by-ko-tko,2026-06-14#00,2026-06-14,fighter_ko,Main Card,False,5838.572502,0.0,0.0,0.0,0,False
+187,ufc-ste6-die4-2026-06-14-totals-0pt5,2026-06-14#00,2026-06-14,rounds_ou,Main Card,False,,0.0,0.0,0.0,0,False
+188,ufc-ste6-die4-2026-06-14-totals-1pt5,2026-06-14#00,2026-06-14,rounds_ou,Main Card,False,,0.0,0.0,0.0,0,False
+189,ufc-ste6-die4-2026-06-14-totals-2pt5,2026-06-14#00,2026-06-14,rounds_ou,Main Card,False,1417.683162,0.0,0.0,0.0,0,False
+190,ufc-ste6-die4-2026-06-14-win-by-ko-tko,2026-06-14#00,2026-06-14,fight_ko,Main Card,False,,0.0,0.0,0.0,0,False
+191,ufc-ste6-die4-2026-06-14-win-by-submission,2026-06-14#00,2026-06-14,fight_sub,Main Card,False,,0.0,0.0,0.0,0,False
+200,ufc-yun-jei-2026-06-06,2026-06-06#01,2026-06-06,winner,Prelims,False,398.58752,4662540.4482,293952.0158,1742.9426,20393,True
+201,ufc-yun-jei-2026-06-06-chaves-win-by-ko-tko,2026-06-06#01,2026-06-06,fighter_ko,Prelims,False,,0.0,0.0,0.0,0,False
+202,ufc-yun-jei-2026-06-06-duben-win-by-ko-tko,2026-06-06#01,2026-06-06,fighter_ko,Prelims,False,,0.0,0.0,0.0,0,False
+203,ufc-yun-jei-2026-06-06-go-the-distance,2026-06-06#01,2026-06-06,distance,Prelims,False,1073.718352,0.0,0.0,0.0,0,False
+204,ufc-yun-jei-2026-06-06-totals-0pt5,2026-06-06#01,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+205,ufc-yun-jei-2026-06-06-totals-1pt5,2026-06-06#01,2026-06-06,rounds_ou,Prelims,False,173.918917,0.0,0.0,0.0,0,False
+206,ufc-yun-jei-2026-06-06-totals-2pt5,2026-06-06#01,2026-06-06,rounds_ou,Prelims,False,,0.0,0.0,0.0,0,False
+207,ufc-yun-jei-2026-06-06-win-by-ko-tko,2026-06-06#01,2026-06-06,fight_ko,Prelims,False,,0.0,0.0,0.0,0,False
+208,ufc-yun-jei-2026-06-06-win-by-submission,2026-06-06#01,2026-06-06,fight_sub,Prelims,False,,0.0,0.0,0.0,0,False

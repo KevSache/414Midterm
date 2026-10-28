@@ -1,9 +1,12 @@
-"""Is there a better clock time to buy a contract?
+"""Is there a better clock time to buy the side that won?
 
-The profit of buying one share at a five-minute mid and holding to
-settlement is settlement minus that mid. Settlement is 1 or 0 for the
-whole life of the market, so the best time to buy inside one market is
-simply the five-minute bin where the mid was lowest.
+Each market has two tokens. The script reads one of them: the Over, the
+away team, or the first fighter. That token's profit is settlement
+minus its mid. The other token pays the opposite 1 or 0, and its price
+sits near one minus this mid. The profit used below is the profit of
+whichever token paid 1. It equals the charted profit when that side
+won, and the negation of the charted profit when it lost. Inside one
+market the best time is the bin where the winner was cheapest.
 
 That best time is saved for every market. It is not what the line is fit
 to. A list of best times has no second variable, so it has no beta. The
@@ -11,23 +14,26 @@ line is fit to every bin:
 
     profit = market effect + beta * hours on the clock
 
-beta is the change in expected profit per share from waiting one more
-hour, after each market's own average profit is removed. A beta near
-zero means waiting longer does not raise or lower profit in a straight
-line. A profit hump in the middle of the window can still hide inside a
-near-zero slope, so the script also writes the mean profit in each half
+beta is the change in the winning side's profit per share from waiting
+one more hour, after each market's own average is removed. A negative
+beta is the winner getting more expensive as the result becomes known.
+A profit hump in the middle of the window can still hide inside a
+straight slope, so the script also writes the mean profit in each half
 hour.
 
 The same full sample, not the top-10 chart sample, is scored for
-accuracy. At each five-minute mark the average price is compared with
-the share of markets that won. Relative accuracy is 1 when those match.
-Mean profit at that mark is the win rate minus the average price, so a
-mark priced exactly right earns about zero and a cheap mark scores
-lower on accuracy. The marked time maximizes the average of that
-accuracy and a 0-to-1 rescaling of mean profit.
+accuracy of the charted price. At each five-minute mark the average
+price is compared with the share of markets whose charted outcome
+happened. Relative accuracy is 1 when those match. The marked time
+maximizes the average of that accuracy and a 0-to-1 rescaling of the
+winning side's mean profit.
 
 The hourly files supply the mid. Posted size is not used. Postgres has
-no price history.
+no price history. A run that already wrote bins.csv can redraw without
+reading those hours:
+
+    python examples/optimal_time.py --plots-only
+    python examples/optimal_time.py --ufc --plots-only
 
     python examples/optimal_time.py
     python examples/optimal_time.py --ufc
@@ -364,8 +370,28 @@ def read_mids(records, hours_for):
     return quotes.drop_duplicates(["market", "asset_id", "bin"])
 
 
+def apply_winner_profit(frame):
+    """Profit of the token that paid 1.
+
+    ``charted_profit`` is settlement minus the charted mid. The winning
+    side's profit is that number when the charted side won, and its
+    negation when the charted side lost, which is the absolute value.
+    A saved file that already has ``charted_profit`` is not folded twice.
+    """
+    if frame is None or frame.empty or ("profit" not in frame.columns and "charted_profit" not in frame.columns):
+        return frame
+    out = frame.copy()
+    if "charted_profit" in out.columns:
+        signed = pd.to_numeric(out["charted_profit"], errors="coerce")
+    else:
+        signed = pd.to_numeric(out["profit"], errors="coerce")
+    out["charted_profit"] = signed
+    out["profit"] = signed.abs()
+    return out
+
+
 def build_panel(records, quotes):
-    """One row per market per five-minute bin, with profit of a buy held to settlement."""
+    """One row per market per five-minute bin, with the winning side's profit."""
     rows = []
     for record in records:
         won = record.get("won")
@@ -395,11 +421,11 @@ def build_panel(records, quotes):
                     "settle_source": record["settle_source"],
                 }
             )
-    return pd.DataFrame(rows)
+    return apply_winner_profit(pd.DataFrame(rows))
 
 
 def best_times(panel):
-    """The bin with the highest buy-and-hold profit. Ties keep the earliest bin."""
+    """The bin where the winning side was cheapest. Ties keep the earliest bin."""
     if panel.empty or CLOCK not in panel.columns:
         return pd.DataFrame()
     ordered = panel.sort_values(["market_id", CLOCK])
@@ -519,7 +545,7 @@ def describe_fit(name, fit):
         verdict = "The 95% interval includes zero. A linear relationship is not distinguishable from noise."
     else:
         direction = "later" if beta > 0 else "earlier"
-        verdict = f"The slope is away from zero. Buying {direction} raises profit in this sample."
+        verdict = f"The slope is away from zero. Buying the winning side {direction} raises profit in this sample."
     return (
         f"{name}\n"
         f"  beta = {beta:+.4f} profit per share per hour\n"
@@ -533,9 +559,12 @@ def describe_fit(name, fit):
 def write_report(sample, panel, best, within, pooled, means):
     lines = [sample, ""]
     lines.append(
-        "Best time to buy inside one market is the five-minute bin with the lowest mid. "
-        "Settlement does not depend on the clock, so that bin is the highest profit by construction. "
-        "If several bins share that price, the earliest one is kept."
+        "Profit is what you make by buying the token that paid 1. "
+        "The script reads one token, the Over, the away team, or the first fighter. "
+        "When that side won, this profit is settlement minus its mid. "
+        "When it lost, this profit is the mid, which is about what the other token paid. "
+        "Inside one market the best time is the five-minute bin where the winner was cheapest. "
+        "If several bins share that profit, the earliest one is kept."
     )
     lines.append("")
     if best.empty:
@@ -552,16 +581,16 @@ def write_report(sample, panel, best, within, pooled, means):
             f"Share whose best bin is the first or last quote of that market: {at_own_edge.mean():.0%}."
         )
     lines.append("")
-    lines.append("Within-market line: profit minus the market's average, on hours minus the market's average.")
+    lines.append("Within-market line: winning-side profit minus the market's average, on hours minus the market's average.")
     lines.append(describe_fit("within", within).rstrip())
     lines.append("")
-    lines.append("Pooled line: one intercept for every market. A market that won sits higher for the whole window.")
+    lines.append("Pooled line: one intercept for every market. The level is how cheap the winner was across the window.")
     lines.append(describe_fit("pooled", pooled).rstrip())
     lines.append("")
     lines.append(
-        "A near-zero beta does not by itself prove there is no best time. "
-        "It proves there is no straight-line gain from betting later rather than earlier. "
-        "The half-hour means below are the check for a hump."
+        "A near-zero beta means the winner's profit has no straight-line relationship with the clock. "
+        "A negative slope is the winner getting more expensive as the result becomes known. "
+        "The half-hour means are the check for a hump."
     )
     text = "\n".join(lines) + "\n"
     path = OUTPUT / f"{sample}_report.txt"
@@ -579,7 +608,7 @@ def plot_sample(sample, best, means, within, panel):
     axes[0].axvline(0, color="#b0b0b0", linewidth=0.8)
     axes[0].set_xlabel(XLABEL)
     axes[0].set_ylabel("Markets")
-    axes[0].set_title("When the mid was lowest")
+    axes[0].set_title("When the winner was cheapest")
     buckets = market_buckets(panel)
     if means.empty:
         axes[1].text(0.5, 0.5, "No prices", ha="center")
@@ -595,7 +624,7 @@ def plot_sample(sample, best, means, within, panel):
                 color="#8eacc8",
                 alpha=0.75,
                 linewidths=0,
-                label="One market in that half hour",
+                label="Winner's profit in that half hour",
                 zorder=2,
             )
         axes[1].plot(
@@ -604,7 +633,7 @@ def plot_sample(sample, best, means, within, panel):
             color="#1f4e79",
             marker="o",
             linewidth=1.6,
-            label="Average profit of buying then",
+            label="Average profit of buying the winner",
             zorder=3,
         )
         if within is not None:
@@ -617,8 +646,8 @@ def plot_sample(sample, best, means, within, panel):
     axes[1].axvline(0, color="#b0b0b0", linewidth=0.8)
     axes[1].axhline(0, color="#b0b0b0", linewidth=0.8)
     axes[1].set_xlabel(XLABEL)
-    axes[1].set_ylabel("Profit per share")
-    axes[1].set_title("Profit of buying in that half hour")
+    axes[1].set_ylabel("Winner's profit per share")
+    axes[1].set_title("Profit of buying the winner")
     fig.suptitle(sample)
     fig.tight_layout()
     fig.savefig(OUTPUT / f"{sample}.png", dpi=140)
@@ -716,8 +745,9 @@ def accuracy_text(sample, table, best, by_price, happened):
     )
     lines.append(
         "Relative accuracy is 1 minus the absolute gap between those two. "
-        "Mean profit at a mark is that win rate minus the average price, so a mark priced exactly right earns about zero. "
-        "Profit score rescales mean profit from 0 at the worst eligible mark to 1 at the best. "
+        "Profit at a mark is the average profit of buying the side that paid 1, about 1 minus the winner's price. "
+        "It is large when the winner was cheap and shrinks as that price moves toward 1. "
+        "Profit score rescales that profit from 0 at the worst eligible mark to 1 at the best. "
         "The joint score is half profit score and half relative accuracy. "
         f"A mark needs at least {slot_floor(table)} markets before it can win."
     )
@@ -755,8 +785,8 @@ def plot_joint(sample, table, best):
     else:
         hours = table[CLOCK]
         left = axes[0]
-        left.plot(hours, table["mean_profit"], color="#1f4e79", marker="o", linewidth=1.3, label="Mean profit per share")
-        left.set_ylabel("Mean profit per share")
+        left.plot(hours, table["mean_profit"], color="#1f4e79", marker="o", linewidth=1.3, label="Mean profit of buying the winner")
+        left.set_ylabel("Winner's profit per share")
         right_axis = left.twinx()
         right_axis.plot(hours, table["relative_accuracy"], color="#d9762c", marker="o", linewidth=1.3, label="Relative accuracy")
         right_axis.set_ylabel("Relative accuracy")
@@ -835,6 +865,22 @@ def run_sample(sample, panel):
     write_accuracy(sample, frame)
 
 
+def redraw():
+    """Rebuild the optimal-time charts from bins.csv. Does not read hourly files."""
+    path = OUTPUT / "bins.csv"
+    if not path.exists():
+        raise SystemExit(
+            f"Nothing to redraw. Run python examples/optimal_time.py first. Expected {path}."
+        )
+    panel = pd.read_csv(path)
+    panel = apply_winner_profit(panel)
+    if panel.empty or "sample" not in panel.columns:
+        raise SystemExit(f"{path} has no settled price paths.")
+    for sample in SAMPLES:
+        run_sample(sample, panel)
+    print(f"Rewrote charts in {OUTPUT}")
+
+
 def prepare(records, hours_for):
     OUTPUT.mkdir(parents=True, exist_ok=True)
     settled = [record for record in records if record.get("won") is not None]
@@ -849,8 +895,8 @@ def prepare(records, hours_for):
     print(f"Wrote {OUTPUT}")
 
 
-def run_nba():
-    """Completed NBA game winners, and traded points, assists, and rebounds lines."""
+def configure_nba():
+    """Clock and folders for NBA game winners and props."""
     global OUTPUT, CLOCK, XLABEL, PHRASE, SAMPLES, HAPPENED
     OUTPUT = Path("outputs/nba/optimal_time")
     CLOCK = "hours_from_tip"
@@ -861,6 +907,25 @@ def run_nba():
         "games": "charted outcome happened",
         "props": "charted outcome happened",
     }
+
+
+def configure_ufc():
+    """Clock and folders for UFC fights and fight-level side markets."""
+    global OUTPUT, CLOCK, XLABEL, PHRASE, SAMPLES, HAPPENED
+    OUTPUT = Path("outputs/ufc/optimal_time")
+    CLOCK = "hours_from_end"
+    XLABEL = "Hours from listed market end"
+    PHRASE = "hours from the listed market end"
+    SAMPLES = ("fights", "sides")
+    HAPPENED = {
+        "fights": "charted fighter won",
+        "sides": "Yes or Over won",
+    }
+
+
+def run_nba():
+    """Completed NBA game winners, and traded points, assists, and rebounds lines."""
+    configure_nba()
     pg = nba.connect_postgres()
     records = load_markets(pg)
     pg.close()
@@ -873,16 +938,7 @@ def run_nba():
 
 def run_ufc():
     """Every UFC fight winner in the parquet window, and traded fight-level side markets."""
-    global OUTPUT, CLOCK, XLABEL, PHRASE, SAMPLES, HAPPENED
-    OUTPUT = Path("outputs/ufc/optimal_time")
-    CLOCK = "hours_from_end"
-    XLABEL = "Hours from listed market end"
-    PHRASE = "hours from the listed market end"
-    SAMPLES = ("fights", "sides")
-    HAPPENED = {
-        "fights": "charted fighter won",
-        "sides": "Yes or Over won",
-    }
+    configure_ufc()
     pg = nba.connect_postgres()
     records = load_ufc(pg)
     pg.close()
@@ -899,7 +955,19 @@ def main():
         action="store_true",
         help="Score UFC fights and fight-level side markets instead of NBA games and props.",
     )
+    parser.add_argument(
+        "--plots-only",
+        action="store_true",
+        help="Redraw from bins.csv in the optimal-time folder. Does not download hourly files.",
+    )
     args = parser.parse_args()
+    if args.ufc:
+        configure_ufc()
+    else:
+        configure_nba()
+    if args.plots_only:
+        redraw()
+        return
     if args.ufc:
         print(
             "UFC hours are measured from the listed market end, which is shared by the card and is not the bell. "

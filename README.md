@@ -284,27 +284,34 @@ The default keeps up to 10 fights that have matched volume of at least 100 and a
 
 `examples/optimal_time.py` asks that with every completed game winner, and with every points, assists, and rebounds line that has matched volume above zero. It does not use the top-10 cutoff or the 1,000 volume floor.
 
-The profit of buying one share at a five-minute mid and holding to settlement is settlement minus that mid. Inside one market the best time to buy is the bin where the mid was lowest, because settlement does not change. The script records that time. The line it fits is a different object: every bin, after each market's average profit is removed,
+Each market has two tokens. The script reads one: the Over, the away team, or the first fighter. That token's profit is settlement minus its mid. The profit in the optimal-time charts is the profit of the token that paid 1. When the charted side won, that is settlement minus its mid. When it lost, that is the charted mid, which is about what the other token paid. Inside one market the best time is the bin where the winner was cheapest. The line it fits is a different object: every bin, after each market's average profit is removed,
 
 ```text
 profit = market effect + beta * hours on the clock
 ```
 
-beta is the change in expected profit per share from waiting one more hour. A beta near zero, with the 95% interval inside about 2 cents an hour, means there is no practical straight-line relationship. That does not rule out a best time in the middle of the window. The right-hand panel of `games.png` and `props.png` is that check: each point is one market's profit in a half hour, and the line is the average of those points. The same panel is `fights.png` and `sides.png` after `--ufc`. Standard errors are clustered by game, so several prop lines from one game count as one game.
+beta is the change in the winning side's profit per share from waiting one more hour. A negative beta is the winner getting more expensive as the result becomes known. A beta near zero, with the 95% interval inside about 2 cents an hour, means there is no practical straight-line relationship. The right-hand panel of `games.png` and `props.png` is that check: each point is one market's winning-side profit in a half hour, and the line is the average of those points. The same panel is `fights.png` and `sides.png` after `--ufc`. Standard errors are clustered by game, so several prop lines from one game count as one game.
 
-The same run scores accuracy on that full sample. The top-10 chart sample is too small for a price band. At each five-minute mark, `games_accuracy_by_time.csv` and `props_accuracy_by_time.csv` compare the average price with the share of markets that won. `games_prediction_accuracy.png` and `props_prediction_accuracy.png` draw that check and the 10-point price bands. Relative accuracy is 1 when the win rate equals the price. Mean profit at that mark is the win rate minus the average price, so a minute priced exactly right earns about zero and a cheap minute scores lower on accuracy. The marked time on `games_profit_vs_accuracy.png` and `props_profit_vs_accuracy.png` is the five-minute mark that maximizes the average of that accuracy and mean profit rescaled from 0 to 1 across the eligible marks. A mark needs 8 markets before it can win. When the fullest mark is thinner than that, the floor drops to that fullest count. The numbers are in `games_accuracy.txt` and `props_accuracy.txt`.
+The same run scores accuracy on that full sample. The top-10 chart sample is too small for a price band. At each five-minute mark, `games_accuracy_by_time.csv` and `props_accuracy_by_time.csv` compare the average price with the share of markets that won. `games_prediction_accuracy.png` and `props_prediction_accuracy.png` draw that check and the 10-point price bands. Relative accuracy is 1 when the win rate equals the price. The profit on that same chart is the winning side's profit, about 1 minus the winner's price. The marked time on `games_profit_vs_accuracy.png` and `props_profit_vs_accuracy.png` is the five-minute mark that maximizes the average of that accuracy and the winning side's mean profit rescaled from 0 to 1 across the eligible marks. A mark needs 8 markets before it can win. When the fullest mark is thinner than that, the floor drops to that fullest count. The numbers are in `games_accuracy.txt` and `props_accuracy.txt`.
 
 ```bash
 python examples/optimal_time.py
 ```
 
-The run reads each distinct hour from six hours before tip through three hours after, once. For the completed games in this extract that is a few hundred hours. Results land in `outputs/nba/optimal_time/`. Games and props are written separately, so the files are `games_accuracy_by_time.csv`, `props_prediction_accuracy.png`, and the same pair of names for the other sample. A second run reuses `cache/` in that folder. An hour that failed to download is not cached, so the next run tries it again.
+The run reads each distinct hour from six hours before tip through three hours after, once. For the completed games in this extract that is a few hundred hours. Results land in `outputs/nba/optimal_time/`. Games and props are written separately, so the files are `games_accuracy_by_time.csv`, `props_prediction_accuracy.png`, and the same pair of names for the other sample. A second full run reuses `cache/` in that folder. An hour that failed to download is not cached, so the next run tries it again. After `bins.csv` is there, the charts can be redrawn without those hours:
+
+```bash
+python examples/optimal_time.py --plots-only
+python examples/optimal_time.py --ufc --plots-only
+```
 
 The same script scores UFC when you pass `--ufc`. That run does not use the top-10 fight cutoff. It keeps every fight winner whose listed end falls in the parquet window, and every fight-level distance, method, and round-total market with matched volume above zero. Fighter-specific props are left out. The clock is hours from the listed market end, not from the bell. That end is one timestamp for the whole card. The window is eight hours before it through two hours after. Fight winners and side markets are written separately under `outputs/ufc/optimal_time/`, as `fights_` and `sides_` files. The NBA cache is not reused, because an hour file cached for NBA only contains the NBA tokens.
 
 ```bash
 python examples/optimal_time.py --ufc
 ```
+
+`--plots-only` reads `outputs/ufc/optimal_time/bins.csv` and redraws the same winning-side charts.
 
 ## Update your local copy
 

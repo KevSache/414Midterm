@@ -292,7 +292,7 @@ profit = market effect + beta * hours on the clock
 
 beta is the change in the winning side's profit per share from waiting one more hour. A negative beta is the winner getting more expensive as the result becomes known. A beta near zero, with the 95% interval inside about 2 cents an hour, means there is no practical straight-line relationship. The right-hand panel of `games.png` and `props.png` is that check: each point is one market's winning-side profit in a half hour, and the line is the average of those points. The same panel is `fights.png` and `sides.png` after `--ufc`. Standard errors are clustered by game, so several prop lines from one game count as one game.
 
-The same run scores accuracy on that full sample. The top-10 chart sample is too small for a price band. At each five-minute mark, `games_accuracy_by_time.csv` and `props_accuracy_by_time.csv` compare the average price with the share of markets that won. `games_prediction_accuracy.png` and `props_prediction_accuracy.png` draw that check and the 10-point price bands. Relative accuracy is 1 when the win rate equals the price. The profit on that same chart is the winning side's profit, about 1 minus the winner's price. The marked time on `games_profit_vs_accuracy.png` and `props_profit_vs_accuracy.png` is the five-minute mark that maximizes the average of that accuracy and the winning side's mean profit rescaled from 0 to 1 across the eligible marks. A mark needs 8 markets before it can win. When the fullest mark is thinner than that, the floor drops to that fullest count. The numbers are in `games_accuracy.txt` and `props_accuracy.txt`.
+The same run scores accuracy on that full sample. The top-10 chart sample is too small for a price band. At each five-minute mark, `games_accuracy_by_time.csv` and `props_accuracy_by_time.csv` compare the average price with the share of markets that won. `games_prediction_accuracy.png` and `props_prediction_accuracy.png` draw that check and the 10-point price bands. Relative accuracy is 1 when the win rate equals the price. The profit on that same chart is the winning side's profit, about 1 minus the winner's price. The marked time on `games_profit_vs_accuracy.png` and `props_profit_vs_accuracy.png` is the half hour that maximizes the average of that accuracy and the winning side's mean profit rescaled from 0 to 1 across the eligible half hours. Each market votes once in a half hour. A half hour needs 8 markets before it can win. When the fullest half hour is thinner than that, the floor drops to that fullest count. The numbers are in `games_accuracy.txt` and `props_accuracy.txt`, and the half-hour rows are in `games_joint_half_hours.csv` and `props_joint_half_hours.csv`.
 
 ```bash
 python examples/optimal_time.py
@@ -311,7 +311,7 @@ The same script scores UFC when you pass `--ufc`. That run does not use the top-
 python examples/optimal_time.py --ufc
 ```
 
-`--plots-only` reads `outputs/ufc/optimal_time/bins.csv` and redraws the same winning-side charts.
+`--plots-only` reads `outputs/ufc/optimal_time/bins.csv` and redraws the same winning-side charts. The joint line on `fights_profit_vs_accuracy.png` and `sides_profit_vs_accuracy.png` is one point per half hour.
 
 ## Update your local copy
 

@@ -722,6 +722,47 @@ def add_joint_score(table):
     return frame
 
 
+def joint_by_half_hour(scored):
+    """Winning-side profit and charted-price accuracy on half hours.
+
+    A five-minute mark can change when one fight has a quote and the next
+    mark does not. Each market votes once per half hour, then the joint
+    score is the average of scaled profit and relative accuracy.
+    """
+    minute = minute_name()
+    columns = [minute, CLOCK, "markets", "mean_win_chance", "actual_win_rate", "mean_profit"]
+    if scored is None or scored.empty:
+        return pd.DataFrame(columns=columns)
+    needed = [CLOCK, "win_chance", "outcome", "profit", "slug"]
+    if any(name not in scored.columns for name in needed):
+        return pd.DataFrame(columns=columns)
+    frame = scored.dropna(subset=needed).copy()
+    if frame.empty:
+        return pd.DataFrame(columns=columns)
+    frame[CLOCK] = (np.floor(pd.to_numeric(frame[CLOCK], errors="coerce") * 2) / 2).round(1)
+    per_market = frame.groupby([CLOCK, "slug"], as_index=False).agg(
+        win_chance=("win_chance", "mean"),
+        outcome=("outcome", "first"),
+        profit=("profit", "mean"),
+    )
+    rows = []
+    for hour, part in per_market.groupby(CLOCK):
+        rows.append(
+            {
+                minute: int(round(float(hour) * 60)),
+                CLOCK: float(hour),
+                "markets": int(part["slug"].nunique()),
+                "mean_win_chance": float(part["win_chance"].mean()),
+                "actual_win_rate": float(part["outcome"].mean()),
+                "mean_profit": float(part["profit"].mean()),
+            }
+        )
+    table = pd.DataFrame(rows, columns=columns)
+    if table.empty:
+        return table
+    return add_joint_score(table.sort_values(CLOCK).reset_index(drop=True))
+
+
 def choose_joint_time(table):
     """Highest joint score. Ties prefer higher profit, then the earlier mark."""
     if table is None or table.empty or "joint" not in table.columns:
@@ -741,22 +782,23 @@ def accuracy_text(sample, table, best, by_price, happened):
     lines.append(
         "This uses every settled market in the optimal-time sample, not the top-10 chart sample. "
         "At each five-minute mark, mean win chance is the average mid and actual win rate is the share "
-        f"of those markets whose {happened}. Each market votes once."
+        f"of those markets whose {happened}. Each market votes once. "
+        "The joint chart uses half hours instead, for the same reason: one market entering a single five-minute bin does not move the line."
     )
     lines.append(
         "Relative accuracy is 1 minus the absolute gap between those two. "
-        "Profit at a mark is the average profit of buying the side that paid 1, about 1 minus the winner's price. "
+        "Profit at a half hour is the average profit of buying the side that paid 1, about 1 minus the winner's price. "
         "It is large when the winner was cheap and shrinks as that price moves toward 1. "
-        "Profit score rescales that profit from 0 at the worst eligible mark to 1 at the best. "
+        "Profit score rescales that profit from 0 at the worst eligible half hour to 1 at the best. "
         "The joint score is half profit score and half relative accuracy. "
-        f"A mark needs at least {slot_floor(table)} markets before it can win."
+        f"A half hour needs at least {slot_floor(table)} markets before it can win."
     )
     lines.append("")
     if best is None:
-        lines.append("No five-minute mark had a settled price.")
+        lines.append("No half hour had a settled price.")
     else:
         lines.append(
-            f"Best joint time: {best[CLOCK]:+.2f} {PHRASE}. "
+            f"Best joint half hour: {best[CLOCK]:+.2f} {PHRASE}. "
             f"Mean profit {best['mean_profit']:+.3f} per share. "
             f"Price {best['mean_win_chance']:.2f}, won {best['actual_win_rate']:.0%}. "
             f"Relative accuracy {best['relative_accuracy']:.2f}. "
@@ -806,7 +848,7 @@ def plot_joint(sample, table, best):
         axis.set_xlabel(XLABEL)
         axis.grid(axis="y", color="#eeeeee")
     axes[0].set_title("Profit and accuracy")
-    axes[1].set_title("Half profit score, half accuracy")
+    axes[1].set_title("Half profit score, half accuracy, by half hour")
     fig.suptitle(sample)
     fig.tight_layout()
     fig.savefig(OUTPUT / f"{sample}_profit_vs_accuracy.png", dpi=140)
@@ -815,20 +857,17 @@ def plot_joint(sample, table, best):
 
 def write_accuracy(sample, panel):
     """Accuracy by time and by price, then the clock time that balances both with profit."""
-    minute = minute_name()
     happened = HAPPENED.get(sample, "charted outcome happened")
     scored = scored_panel(panel)
     by_time, by_price = predict.accuracy_tables(scored, clock=CLOCK)
-    if not by_time.empty:
-        profits = profit_by_minute(scored)
-        by_time = by_time.merge(profits, on=minute, how="left")
-        by_time = add_joint_score(by_time)
-    best = choose_joint_time(by_time)
-    if best is not None and not by_time.empty:
-        by_time["chosen"] = by_time[minute] == int(best[minute])
+    half = joint_by_half_hour(scored)
+    best = choose_joint_time(half)
+    if best is not None and not half.empty:
+        half["chosen"] = np.isclose(half[CLOCK].astype(float), float(best[CLOCK]))
     by_time.to_csv(OUTPUT / f"{sample}_accuracy_by_time.csv", index=False)
     by_price.to_csv(OUTPUT / f"{sample}_accuracy_by_price.csv", index=False)
-    text = accuracy_text(sample, by_time, best, by_price, happened)
+    half.to_csv(OUTPUT / f"{sample}_joint_half_hours.csv", index=False)
+    text = accuracy_text(sample, half, best, by_price, happened)
     (OUTPUT / f"{sample}_accuracy.txt").write_text(text, encoding="utf-8")
     print(text, flush=True)
     if scored is not None and not scored.empty:
@@ -843,7 +882,7 @@ def write_accuracy(sample, panel):
         target = OUTPUT / f"{sample}_prediction_accuracy.png"
         if saved.exists():
             saved.replace(target)
-    plot_joint(sample, by_time, best)
+    plot_joint(sample, half, best)
 
 
 def run_sample(sample, panel):

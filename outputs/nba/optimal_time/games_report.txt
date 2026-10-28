@@ -1,0 +1,23 @@
+games
+
+Profit is what you make by buying the token that paid 1. The script reads one token, the Over, the away team, or the first fighter. When that side won, this profit is settlement minus its mid. When it lost, this profit is the mid, which is about what the other token paid. Inside one market the best time is the five-minute bin where the winner was cheapest. If several bins share that profit, the earliest one is kept.
+
+Markets with a price path: 14. Median best time: +1.04 hours from listed tip. Share whose best bin is the first or last quote of that market: 29%.
+
+Within-market line: winning-side profit minus the market's average, on hours minus the market's average.
+within
+  beta = -0.0255 profit per share per hour
+  se = 0.0072   95% interval [-0.0397, -0.0113]
+  two-sided normal p = 0.000
+  rows = 1283   clusters = 14
+  The slope is away from zero. Buying the winning side earlier raises profit in this sample.
+
+Pooled line: one intercept for every market. The level is how cheap the winner was across the window.
+pooled
+  beta = -0.0273 profit per share per hour
+  se = 0.0071   95% interval [-0.0413, -0.0134]
+  two-sided normal p = 0.000
+  rows = 1283   clusters = 14
+  The slope is away from zero. Buying the winning side earlier raises profit in this sample.
+
+A near-zero beta means the winner's profit has no straight-line relationship with the clock. A negative slope is the winner getting more expensive as the result becomes known. The half-hour means are the check for a hump.

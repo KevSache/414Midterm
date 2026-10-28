@@ -1,0 +1,20 @@
+How often the price called the outcome
+
+The win chance on a five-minute row is that row's mid. A mid of 0.70 is a 70% chance the charted outcome happens. A call predicts it above 0.5 and predicts it does not happen below 0.5. A mid of exactly 0.5 is not a call.
+One fight has one result, so an hour spent at the same price is twelve rows and still one fight. The tables count each fight once inside a five-minute mark or a price band.
+
+Bin-level calls: 70.0% of 878 quotes matched the final result (10 fights). This counts a long quote path more than once.
+Bin-level Brier score: 0.194. This is the average of (win chance − outcome) squared. A coin flip scores 0.250.
+Across five-minute marks, the average call hit rate is 66.1%. Each mark counts once, so one fight quoted all night does not dominate this average.
+
+Price bands. A calibrated market resolves positive about as often as its price.
+  0.00–0.10: price 0.01, resolved positive for 0% of 5 fights (41 bins).
+  0.10–0.20: price 0.15, resolved positive for 17% of 6 fights (92 bins).
+  0.20–0.30: price 0.22, resolved positive for 20% of 5 fights (286 bins).
+  0.30–0.40: price 0.34, resolved positive for 25% of 4 fights (4 bins).
+  0.40–0.50: price 0.49, resolved positive for 50% of 2 fights (148 bins).
+  0.50–0.60: price 0.55, resolved positive for 60% of 5 fights (99 bins).
+  0.60–0.70: price 0.63, resolved positive for 100% of 3 fights (113 bins).
+  0.70–0.80: price 0.75, resolved positive for 100% of 4 fights (55 bins).
+  0.80–0.90: price 0.86, resolved positive for 100% of 2 fights (3 bins).
+  0.90–1.00: price 0.99, resolved positive for 100% of 5 fights (41 bins).

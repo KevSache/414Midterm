@@ -1,0 +1,19 @@
+How often the price called the outcome
+
+The win chance on a five-minute row is that row's mid. A mid of 0.70 is a 70% chance the charted outcome happens. A call predicts it above 0.5 and predicts it does not happen below 0.5. A mid of exactly 0.5 is not a call.
+One market has one result, so an hour spent at the same price is twelve rows and still one market. The tables count each market once inside a five-minute mark or a price band.
+
+Bin-level calls: 48.9% of 225 quotes matched the final result (2 markets). This counts a long quote path more than once.
+Bin-level Brier score: 0.329. This is the average of (win chance − outcome) squared. A coin flip scores 0.250.
+Across five-minute marks, the average call hit rate is 52.1%. Each mark counts once, so one market quoted all night does not dominate this average.
+
+Price bands. A calibrated market resolves positive about as often as its price.
+  0.00–0.10: price 0.00, resolved positive for 0% of 1 market (5 bins).
+  0.20–0.30: price 0.27, resolved positive for 100% of 1 market (3 bins).
+  0.30–0.40: price 0.37, resolved positive for 100% of 1 market (79 bins).
+  0.40–0.50: price 0.44, resolved positive for 50% of 2 markets (84 bins).
+  0.50–0.60: price 0.56, resolved positive for 50% of 2 markets (9 bins).
+  0.60–0.70: price 0.64, resolved positive for 50% of 2 markets (4 bins).
+  0.70–0.80: price 0.75, resolved positive for 50% of 2 markets (6 bins).
+  0.80–0.90: price 0.85, resolved positive for 50% of 2 markets (11 bins).
+  0.90–1.00: price 0.95, resolved positive for 50% of 2 markets (24 bins).

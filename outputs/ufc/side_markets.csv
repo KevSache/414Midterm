@@ -1,0 +1,41 @@
+rank,fighter,slug,kind,line,title,volume_clob,card_price,yes_won
+1,Ciryl Gane,ufc-cir-ale30-2026-06-14-go-the-distance,distance,,Fight to Go the Distance?,,,False
+1,Ciryl Gane,ufc-cir-ale30-2026-06-14-win-by-ko-tko,ko,,Will the fight be won by KO or TKO?,8162.286160999999,0.999,True
+1,Ciryl Gane,ufc-cir-ale30-2026-06-14-win-by-submission,submission,,Will the fight be won by submission?,4298.325617999999,0.001,False
+1,Ciryl Gane,ufc-cir-ale30-2026-06-14-totals-0pt5,total,0.5,O/U 0.5 Rounds,661.7833519999999,0.8,True
+2,Derrick Lewis,ufc-der-jos52-2026-06-14-win-by-submission,submission,,Will the fight be won by submission?,,,False
+2,Derrick Lewis,ufc-der-jos52-2026-06-14-win-by-ko-tko,ko,,Will the fight be won by KO or TKO?,,,True
+2,Derrick Lewis,ufc-der-jos52-2026-06-14-go-the-distance,distance,,Fight to Go the Distance?,30902.799965000002,0.001,False
+2,Derrick Lewis,ufc-der-jos52-2026-06-14-totals-2pt5,total,2.5,O/U 2.5 Rounds,1138.383237,0.499,False
+3,Justin Gaethje,ufc-jus3-ili1-2026-06-14-win-by-submission,submission,,Will the fight be won by submission?,,,False
+3,Justin Gaethje,ufc-jus3-ili1-2026-06-14-go-the-distance,distance,,Fight to Go the Distance?,2.083325,,False
+3,Justin Gaethje,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ko,,Will the fight be won by KO or TKO?,2.7027,0.7350000000000001,True
+3,Justin Gaethje,ufc-jus3-ili1-2026-06-14-totals-4pt5,total,4.5,O/U 4.5 Rounds,661.8090500000001,0.001,False
+4,Brendan Allen,ufc-bre1-edm-2026-06-06-win-by-ko-tko,ko,,Will the fight be won by KO or TKO?,,,False
+4,Brendan Allen,ufc-bre1-edm-2026-06-06-win-by-submission,submission,,Will the fight be won by submission?,,,False
+4,Brendan Allen,ufc-bre1-edm-2026-06-06-go-the-distance,distance,,Fight to Go the Distance?,,,True
+4,Brendan Allen,ufc-bre1-edm-2026-06-06-totals-1pt5,total,1.5,O/U 1.5 Rounds,420.110438,,True
+5,Belal Muhammad,ufc-bel-gab3-2026-06-06-win-by-submission,submission,,Will the fight be won by submission?,310.543611,,False
+5,Belal Muhammad,ufc-bel-gab3-2026-06-06-win-by-ko-tko,ko,,Will the fight be won by KO or TKO?,638.657892,,False
+5,Belal Muhammad,ufc-bel-gab3-2026-06-06-go-the-distance,distance,,Fight to Go the Distance?,,,True
+5,Belal Muhammad,ufc-bel-gab3-2026-06-06-totals-0pt5,total,0.5,O/U 0.5 Rounds,,,True
+6,Michael Chandler,ufc-mic12-mau4-2026-06-14-go-the-distance,distance,,Fight to Go the Distance?,,,False
+6,Michael Chandler,ufc-mic12-mau4-2026-06-14-win-by-submission,submission,,Will the fight be won by submission?,,,False
+6,Michael Chandler,ufc-mic12-mau4-2026-06-14-win-by-ko-tko,ko,,Will the fight be won by KO or TKO?,,,True
+6,Michael Chandler,ufc-mic12-mau4-2026-06-14-totals-1pt5,total,1.5,O/U 1.5 Rounds,45695.65865,0.001,False
+7,Marcus McGhee,ufc-mar42-joh41-2026-06-06-win-by-submission,submission,,Will the fight be won by submission?,,,False
+7,Marcus McGhee,ufc-mar42-joh41-2026-06-06-go-the-distance,distance,,Fight to Go the Distance?,,,True
+7,Marcus McGhee,ufc-mar42-joh41-2026-06-06-win-by-ko-tko,ko,,Will the fight be won by KO or TKO?,,,False
+7,Marcus McGhee,ufc-mar42-joh41-2026-06-06-totals-1pt5,total,1.5,O/U 1.5 Rounds,,,True
+8,Kyle Daukaus,ufc-kyl3-bon-2026-06-14-win-by-submission,submission,,Will the fight be won by submission?,,,False
+8,Kyle Daukaus,ufc-kyl3-bon-2026-06-14-win-by-ko-tko,ko,,Will the fight be won by KO or TKO?,,,True
+8,Kyle Daukaus,ufc-kyl3-bon-2026-06-14-go-the-distance,distance,,Fight to Go the Distance?,,,False
+8,Kyle Daukaus,ufc-kyl3-bon-2026-06-14-totals-2pt5,total,2.5,O/U 2.5 Rounds,,,False
+9,Bruno Silva,ufc-bru-ed-2026-06-06-go-the-distance,distance,,Fight to Go the Distance?,,,False
+9,Bruno Silva,ufc-bru-ed-2026-06-06-win-by-ko-tko,ko,,Will the fight be won by KO or TKO?,39.37,,False
+9,Bruno Silva,ufc-bru-ed-2026-06-06-win-by-submission,submission,,Will the fight be won by submission?,359.557141,,True
+9,Bruno Silva,ufc-bru-ed-2026-06-06-totals-0pt5,total,0.5,O/U 0.5 Rounds,,,True
+10,Joanderson Brito,ufc-joa4-jor10-2026-06-06-go-the-distance,distance,,Fight to Go the Distance?,,,False
+10,Joanderson Brito,ufc-joa4-jor10-2026-06-06-win-by-ko-tko,ko,,Will the fight be won by KO or TKO?,,,False
+10,Joanderson Brito,ufc-joa4-jor10-2026-06-06-win-by-submission,submission,,Will the fight be won by submission?,,,True
+10,Joanderson Brito,ufc-joa4-jor10-2026-06-06-totals-0pt5,total,0.5,O/U 0.5 Rounds,,,True

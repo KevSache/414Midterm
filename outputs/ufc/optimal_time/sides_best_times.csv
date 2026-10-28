@@ -1,0 +1,11 @@
+sample,market_id,cluster,label,hours_from_end,mid,profit,won,volume_clob,settle_source,charted_profit
+sides,ufc-raf-man6-2026-06-27-totals-1pt5,ufc-raf-man6-2026-06-27,Rafael Fiziev vs Manuel Torres over 1.5,-8.583333055555556,0.01,0.01,False,22115.312374,polymarket,-0.01
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-8.499999722222222,0.42000000000000004,0.58,True,2.7027,polymarket,0.58
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-6.416666388888888,0.675,0.675,False,16510.958108,espn,-0.675
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-6.249999722222222,0.695,0.695,False,91.928567,espn,-0.695
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-5.916666388888888,0.91,0.91,False,77.423072,espn,-0.91
+sides,ufc-ste6-die4-2026-06-14-totals-2pt5,ufc-ste6-die4-2026-06-14,Steve Garcia vs Diego Lopes over 2.5,-2.5833330555555554,0.02,0.02,False,1417.6831619999998,espn,-0.02
+sides,ufc-mic12-mau4-2026-06-14-totals-1pt5,ufc-mic12-mau4-2026-06-14,Michael Chandler vs Mauricio Ruffy over 1.5,-1.3333330555555556,0.95,0.95,False,45695.65865,espn,-0.95
+sides,ufc-cir-ale30-2026-06-14-win-by-ko-tko,ufc-cir-ale30-2026-06-14,Ciryl Gane vs Alex Pereira win by KO/TKO,0.2500002777777778,0.999,0.0010000000000000009,True,8162.286160999999,polymarket,0.0010000000000000009
+sides,ufc-cir-ale30-2026-06-14-win-by-submission,ufc-cir-ale30-2026-06-14,Ciryl Gane vs Alex Pereira win by submission,0.5000002777777778,0.2,0.2,False,4298.325617999999,polymarket,-0.2
+sides,ufc-jus3-ili1-2026-06-14-totals-4pt5,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria over 4.5,1.4166669444444444,0.49,0.49,False,661.8090500000001,polymarket,-0.49

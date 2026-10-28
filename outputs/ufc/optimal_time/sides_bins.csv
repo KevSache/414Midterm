@@ -1,0 +1,309 @@
+sample,market_id,cluster,label,hours_from_end,mid,profit,won,volume_clob,settle_source,charted_profit
+sides,ufc-cir-ale30-2026-06-14-win-by-ko-tko,ufc-cir-ale30-2026-06-14,Ciryl Gane vs Alex Pereira win by KO/TKO,0.2500002777777778,0.999,0.0010000000000000009,True,8162.286160999999,polymarket,0.0010000000000000009
+sides,ufc-cir-ale30-2026-06-14-win-by-ko-tko,ufc-cir-ale30-2026-06-14,Ciryl Gane vs Alex Pereira win by KO/TKO,0.3333336111111111,0.999,0.0010000000000000009,True,8162.286160999999,polymarket,0.0010000000000000009
+sides,ufc-cir-ale30-2026-06-14-win-by-ko-tko,ufc-cir-ale30-2026-06-14,Ciryl Gane vs Alex Pereira win by KO/TKO,0.41666694444444446,0.999,0.0010000000000000009,True,8162.286160999999,polymarket,0.0010000000000000009
+sides,ufc-cir-ale30-2026-06-14-win-by-ko-tko,ufc-cir-ale30-2026-06-14,Ciryl Gane vs Alex Pereira win by KO/TKO,0.5000002777777778,0.999,0.0010000000000000009,True,8162.286160999999,polymarket,0.0010000000000000009
+sides,ufc-cir-ale30-2026-06-14-win-by-ko-tko,ufc-cir-ale30-2026-06-14,Ciryl Gane vs Alex Pereira win by KO/TKO,0.5833336111111111,0.999,0.0010000000000000009,True,8162.286160999999,polymarket,0.0010000000000000009
+sides,ufc-cir-ale30-2026-06-14-win-by-ko-tko,ufc-cir-ale30-2026-06-14,Ciryl Gane vs Alex Pereira win by KO/TKO,0.6666669444444445,0.999,0.0010000000000000009,True,8162.286160999999,polymarket,0.0010000000000000009
+sides,ufc-cir-ale30-2026-06-14-win-by-submission,ufc-cir-ale30-2026-06-14,Ciryl Gane vs Alex Pereira win by submission,0.3333336111111111,0.001,0.001,False,4298.325617999999,polymarket,-0.001
+sides,ufc-cir-ale30-2026-06-14-win-by-submission,ufc-cir-ale30-2026-06-14,Ciryl Gane vs Alex Pereira win by submission,0.41666694444444446,0.001,0.001,False,4298.325617999999,polymarket,-0.001
+sides,ufc-cir-ale30-2026-06-14-win-by-submission,ufc-cir-ale30-2026-06-14,Ciryl Gane vs Alex Pereira win by submission,0.5000002777777778,0.2,0.2,False,4298.325617999999,polymarket,-0.2
+sides,ufc-cir-ale30-2026-06-14-win-by-submission,ufc-cir-ale30-2026-06-14,Ciryl Gane vs Alex Pereira win by submission,0.6666669444444445,0.001,0.001,False,4298.325617999999,polymarket,-0.001
+sides,ufc-raf-man6-2026-06-27-totals-1pt5,ufc-raf-man6-2026-06-27,Rafael Fiziev vs Manuel Torres over 1.5,-8.749999722222222,0.001,0.001,False,22115.312374,polymarket,-0.001
+sides,ufc-raf-man6-2026-06-27-totals-1pt5,ufc-raf-man6-2026-06-27,Rafael Fiziev vs Manuel Torres over 1.5,-8.666666388888888,0.001,0.001,False,22115.312374,polymarket,-0.001
+sides,ufc-raf-man6-2026-06-27-totals-1pt5,ufc-raf-man6-2026-06-27,Rafael Fiziev vs Manuel Torres over 1.5,-8.583333055555556,0.01,0.01,False,22115.312374,polymarket,-0.01
+sides,ufc-raf-man6-2026-06-27-totals-1pt5,ufc-raf-man6-2026-06-27,Rafael Fiziev vs Manuel Torres over 1.5,-8.499999722222222,0.001,0.001,False,22115.312374,polymarket,-0.001
+sides,ufc-ste6-die4-2026-06-14-totals-2pt5,ufc-ste6-die4-2026-06-14,Steve Garcia vs Diego Lopes over 2.5,-2.7499997222222223,0.001,0.001,False,1417.6831619999998,espn,-0.001
+sides,ufc-ste6-die4-2026-06-14-totals-2pt5,ufc-ste6-die4-2026-06-14,Steve Garcia vs Diego Lopes over 2.5,-2.666666388888889,0.001,0.001,False,1417.6831619999998,espn,-0.001
+sides,ufc-ste6-die4-2026-06-14-totals-2pt5,ufc-ste6-die4-2026-06-14,Steve Garcia vs Diego Lopes over 2.5,-2.5833330555555554,0.02,0.02,False,1417.6831619999998,espn,-0.02
+sides,ufc-ste6-die4-2026-06-14-totals-2pt5,ufc-ste6-die4-2026-06-14,Steve Garcia vs Diego Lopes over 2.5,-2.416666388888889,0.001,0.001,False,1417.6831619999998,espn,-0.001
+sides,ufc-mic12-mau4-2026-06-14-totals-1pt5,ufc-mic12-mau4-2026-06-14,Michael Chandler vs Mauricio Ruffy over 1.5,-1.749999722222222,0.001,0.001,False,45695.65865,espn,-0.001
+sides,ufc-mic12-mau4-2026-06-14-totals-1pt5,ufc-mic12-mau4-2026-06-14,Michael Chandler vs Mauricio Ruffy over 1.5,-1.6666663888888889,0.001,0.001,False,45695.65865,espn,-0.001
+sides,ufc-mic12-mau4-2026-06-14-totals-1pt5,ufc-mic12-mau4-2026-06-14,Michael Chandler vs Mauricio Ruffy over 1.5,-1.5833330555555556,0.001,0.001,False,45695.65865,espn,-0.001
+sides,ufc-mic12-mau4-2026-06-14-totals-1pt5,ufc-mic12-mau4-2026-06-14,Michael Chandler vs Mauricio Ruffy over 1.5,-1.499999722222222,0.001,0.001,False,45695.65865,espn,-0.001
+sides,ufc-mic12-mau4-2026-06-14-totals-1pt5,ufc-mic12-mau4-2026-06-14,Michael Chandler vs Mauricio Ruffy over 1.5,-1.3333330555555556,0.95,0.95,False,45695.65865,espn,-0.95
+sides,ufc-mic12-mau4-2026-06-14-totals-1pt5,ufc-mic12-mau4-2026-06-14,Michael Chandler vs Mauricio Ruffy over 1.5,-1.249999722222222,0.001,0.001,False,45695.65865,espn,-0.001
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-8.999999722222222,0.7350000000000001,0.2649999999999999,True,2.7027,polymarket,0.2649999999999999
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-8.916666388888888,0.74,0.26,True,2.7027,polymarket,0.26
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-8.833333055555556,0.845,0.15500000000000003,True,2.7027,polymarket,0.15500000000000003
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-8.749999722222222,0.7250000000000001,0.2749999999999999,True,2.7027,polymarket,0.2749999999999999
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-8.666666388888888,0.78,0.21999999999999997,True,2.7027,polymarket,0.21999999999999997
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-8.583333055555556,0.805,0.19499999999999995,True,2.7027,polymarket,0.19499999999999995
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-8.499999722222222,0.42000000000000004,0.58,True,2.7027,polymarket,0.58
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-8.416666388888888,0.655,0.345,True,2.7027,polymarket,0.345
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-8.333333055555556,0.7150000000000001,0.2849999999999999,True,2.7027,polymarket,0.2849999999999999
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-8.249999722222222,0.775,0.22499999999999998,True,2.7027,polymarket,0.22499999999999998
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-8.166666388888888,0.76,0.24,True,2.7027,polymarket,0.24
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-8.083333055555556,0.75,0.25,True,2.7027,polymarket,0.25
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-7.999999722222222,0.73,0.27,True,2.7027,polymarket,0.27
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-7.916666388888888,0.765,0.235,True,2.7027,polymarket,0.235
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-7.833333055555555,0.755,0.245,True,2.7027,polymarket,0.245
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-7.749999722222222,0.755,0.245,True,2.7027,polymarket,0.245
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-7.666666388888888,0.755,0.245,True,2.7027,polymarket,0.245
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-7.583333055555555,0.755,0.245,True,2.7027,polymarket,0.245
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-7.499999722222222,0.755,0.245,True,2.7027,polymarket,0.245
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-7.416666388888888,0.765,0.235,True,2.7027,polymarket,0.235
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-7.333333055555555,0.765,0.235,True,2.7027,polymarket,0.235
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-7.249999722222222,0.75,0.25,True,2.7027,polymarket,0.25
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-7.166666388888888,0.755,0.245,True,2.7027,polymarket,0.245
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-7.083333055555555,0.755,0.245,True,2.7027,polymarket,0.245
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-6.999999722222222,0.75,0.25,True,2.7027,polymarket,0.25
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-6.916666388888888,0.675,0.32499999999999996,True,2.7027,polymarket,0.32499999999999996
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-6.833333055555555,0.65,0.35,True,2.7027,polymarket,0.35
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-6.749999722222222,0.675,0.32499999999999996,True,2.7027,polymarket,0.32499999999999996
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-6.666666388888888,0.75,0.25,True,2.7027,polymarket,0.25
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-6.583333055555555,0.77,0.22999999999999998,True,2.7027,polymarket,0.22999999999999998
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-6.499999722222222,0.75,0.25,True,2.7027,polymarket,0.25
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-6.416666388888888,0.55,0.44999999999999996,True,2.7027,polymarket,0.44999999999999996
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-6.166666388888888,0.76,0.24,True,2.7027,polymarket,0.24
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-6.083333055555555,0.745,0.255,True,2.7027,polymarket,0.255
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-5.999999722222222,0.755,0.245,True,2.7027,polymarket,0.245
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-5.916666388888888,0.76,0.24,True,2.7027,polymarket,0.24
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-5.833333055555555,0.7549999999999999,0.2450000000000001,True,2.7027,polymarket,0.2450000000000001
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-5.749999722222222,0.77,0.22999999999999998,True,2.7027,polymarket,0.22999999999999998
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-5.666666388888888,0.76,0.24,True,2.7027,polymarket,0.24
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-5.583333055555555,0.77,0.22999999999999998,True,2.7027,polymarket,0.22999999999999998
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-5.499999722222222,0.77,0.22999999999999998,True,2.7027,polymarket,0.22999999999999998
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-5.416666388888888,0.745,0.255,True,2.7027,polymarket,0.255
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-5.333333055555555,0.745,0.255,True,2.7027,polymarket,0.255
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-5.166666388888888,0.7649999999999999,0.2350000000000001,True,2.7027,polymarket,0.2350000000000001
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-5.083333055555555,0.76,0.24,True,2.7027,polymarket,0.24
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-4.999999722222222,0.7649999999999999,0.2350000000000001,True,2.7027,polymarket,0.2350000000000001
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-4.916666388888888,0.76,0.24,True,2.7027,polymarket,0.24
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-4.833333055555555,0.76,0.24,True,2.7027,polymarket,0.24
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-4.749999722222222,0.76,0.24,True,2.7027,polymarket,0.24
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-4.666666388888888,0.7649999999999999,0.2350000000000001,True,2.7027,polymarket,0.2350000000000001
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-4.583333055555555,0.7649999999999999,0.2350000000000001,True,2.7027,polymarket,0.2350000000000001
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-4.499999722222222,0.7649999999999999,0.2350000000000001,True,2.7027,polymarket,0.2350000000000001
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-4.416666388888888,0.77,0.22999999999999998,True,2.7027,polymarket,0.22999999999999998
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-4.333333055555555,0.77,0.22999999999999998,True,2.7027,polymarket,0.22999999999999998
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-4.249999722222222,0.78,0.21999999999999997,True,2.7027,polymarket,0.21999999999999997
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-4.166666388888888,0.76,0.24,True,2.7027,polymarket,0.24
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-4.083333055555555,0.74,0.26,True,2.7027,polymarket,0.26
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-3.9999997222222223,0.7150000000000001,0.2849999999999999,True,2.7027,polymarket,0.2849999999999999
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-3.916666388888889,0.74,0.26,True,2.7027,polymarket,0.26
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-3.8333330555555554,0.7,0.30000000000000004,True,2.7027,polymarket,0.30000000000000004
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-3.7499997222222223,0.7,0.30000000000000004,True,2.7027,polymarket,0.30000000000000004
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-3.666666388888889,0.6,0.4,True,2.7027,polymarket,0.4
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-3.5833330555555554,0.685,0.31499999999999995,True,2.7027,polymarket,0.31499999999999995
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-3.4999997222222223,0.685,0.31499999999999995,True,2.7027,polymarket,0.31499999999999995
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-3.416666388888889,0.65,0.35,True,2.7027,polymarket,0.35
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-3.3333330555555554,0.69,0.31000000000000005,True,2.7027,polymarket,0.31000000000000005
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-3.2499997222222223,0.69,0.31000000000000005,True,2.7027,polymarket,0.31000000000000005
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-3.166666388888889,0.705,0.29500000000000004,True,2.7027,polymarket,0.29500000000000004
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-3.0833330555555554,0.685,0.31499999999999995,True,2.7027,polymarket,0.31499999999999995
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-2.9999997222222223,0.71,0.29000000000000004,True,2.7027,polymarket,0.29000000000000004
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-2.916666388888889,0.665,0.33499999999999996,True,2.7027,polymarket,0.33499999999999996
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-2.8333330555555554,0.69,0.31000000000000005,True,2.7027,polymarket,0.31000000000000005
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-2.7499997222222223,0.69,0.31000000000000005,True,2.7027,polymarket,0.31000000000000005
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-2.666666388888889,0.69,0.31000000000000005,True,2.7027,polymarket,0.31000000000000005
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-2.5833330555555554,0.6950000000000001,0.30499999999999994,True,2.7027,polymarket,0.30499999999999994
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-2.4999997222222223,0.675,0.32499999999999996,True,2.7027,polymarket,0.32499999999999996
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-2.416666388888889,0.6599999999999999,0.3400000000000001,True,2.7027,polymarket,0.3400000000000001
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-2.3333330555555554,0.665,0.33499999999999996,True,2.7027,polymarket,0.33499999999999996
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-2.2499997222222223,0.74,0.26,True,2.7027,polymarket,0.26
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-2.166666388888889,0.65,0.35,True,2.7027,polymarket,0.35
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-2.0833330555555554,0.725,0.275,True,2.7027,polymarket,0.275
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-1.999999722222222,0.5,0.5,True,2.7027,polymarket,0.5
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-1.9166663888888889,0.69,0.31000000000000005,True,2.7027,polymarket,0.31000000000000005
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-1.8333330555555556,0.73,0.27,True,2.7027,polymarket,0.27
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-1.749999722222222,0.59,0.41000000000000003,True,2.7027,polymarket,0.41000000000000003
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-1.6666663888888889,0.575,0.42500000000000004,True,2.7027,polymarket,0.42500000000000004
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-1.5833330555555556,0.67,0.32999999999999996,True,2.7027,polymarket,0.32999999999999996
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-1.499999722222222,0.59,0.41000000000000003,True,2.7027,polymarket,0.41000000000000003
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-1.4166663888888889,0.745,0.255,True,2.7027,polymarket,0.255
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-1.3333330555555556,0.635,0.365,True,2.7027,polymarket,0.365
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-1.249999722222222,0.6,0.4,True,2.7027,polymarket,0.4
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-1.1666663888888889,0.665,0.33499999999999996,True,2.7027,polymarket,0.33499999999999996
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-1.0833330555555556,0.6799999999999999,0.32000000000000006,True,2.7027,polymarket,0.32000000000000006
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-0.9999997222222222,0.525,0.475,True,2.7027,polymarket,0.475
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-0.9166663888888889,0.72,0.28,True,2.7027,polymarket,0.28
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-0.8333330555555555,0.755,0.245,True,2.7027,polymarket,0.245
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-0.7499997222222222,0.735,0.265,True,2.7027,polymarket,0.265
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-0.6666663888888889,0.755,0.245,True,2.7027,polymarket,0.245
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-0.5833330555555555,0.755,0.245,True,2.7027,polymarket,0.245
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-0.4999997222222222,0.66,0.33999999999999997,True,2.7027,polymarket,0.33999999999999997
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-0.4166663888888889,0.73,0.27,True,2.7027,polymarket,0.27
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-0.33333305555555554,0.735,0.265,True,2.7027,polymarket,0.265
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-0.24999972222222222,0.78,0.21999999999999997,True,2.7027,polymarket,0.21999999999999997
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-0.1666663888888889,0.75,0.25,True,2.7027,polymarket,0.25
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,-0.08333305555555556,0.71,0.29000000000000004,True,2.7027,polymarket,0.29000000000000004
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,2.7777777777777776e-07,0.735,0.265,True,2.7027,polymarket,0.265
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,0.08333361111111111,0.73,0.27,True,2.7027,polymarket,0.27
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,0.16666694444444444,0.74,0.26,True,2.7027,polymarket,0.26
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,0.2500002777777778,0.8,0.19999999999999996,True,2.7027,polymarket,0.19999999999999996
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,0.3333336111111111,0.77,0.22999999999999998,True,2.7027,polymarket,0.22999999999999998
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,0.41666694444444446,0.77,0.22999999999999998,True,2.7027,polymarket,0.22999999999999998
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,0.5000002777777778,0.775,0.22499999999999998,True,2.7027,polymarket,0.22499999999999998
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,0.5833336111111111,0.8200000000000001,0.17999999999999994,True,2.7027,polymarket,0.17999999999999994
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,0.6666669444444445,0.85,0.15000000000000002,True,2.7027,polymarket,0.15000000000000002
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,0.7500002777777778,0.8300000000000001,0.16999999999999993,True,2.7027,polymarket,0.16999999999999993
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,0.8333336111111111,0.8,0.19999999999999996,True,2.7027,polymarket,0.19999999999999996
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,0.9166669444444445,0.6,0.4,True,2.7027,polymarket,0.4
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,1.000000277777778,0.43000000000000005,0.57,True,2.7027,polymarket,0.57
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,1.0833336111111111,0.87,0.13,True,2.7027,polymarket,0.13
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,1.1666669444444444,0.99,0.010000000000000009,True,2.7027,polymarket,0.010000000000000009
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,1.250000277777778,0.99,0.010000000000000009,True,2.7027,polymarket,0.010000000000000009
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,1.3333336111111111,0.999,0.0010000000000000009,True,2.7027,polymarket,0.0010000000000000009
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,1.4166669444444444,0.999,0.0010000000000000009,True,2.7027,polymarket,0.0010000000000000009
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,1.500000277777778,0.85,0.15000000000000002,True,2.7027,polymarket,0.15000000000000002
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,1.5833336111111111,0.999,0.0010000000000000009,True,2.7027,polymarket,0.0010000000000000009
+sides,ufc-jus3-ili1-2026-06-14-win-by-ko-tko,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria win by KO/TKO,1.6666669444444444,0.999,0.0010000000000000009,True,2.7027,polymarket,0.0010000000000000009
+sides,ufc-jus3-ili1-2026-06-14-totals-4pt5,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria over 4.5,1.250000277777778,0.001,0.001,False,661.8090500000001,polymarket,-0.001
+sides,ufc-jus3-ili1-2026-06-14-totals-4pt5,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria over 4.5,1.3333336111111111,0.001,0.001,False,661.8090500000001,polymarket,-0.001
+sides,ufc-jus3-ili1-2026-06-14-totals-4pt5,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria over 4.5,1.4166669444444444,0.49,0.49,False,661.8090500000001,polymarket,-0.49
+sides,ufc-jus3-ili1-2026-06-14-totals-4pt5,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria over 4.5,1.500000277777778,0.2,0.2,False,661.8090500000001,polymarket,-0.2
+sides,ufc-jus3-ili1-2026-06-14-totals-4pt5,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria over 4.5,1.5833336111111111,0.47,0.47,False,661.8090500000001,polymarket,-0.47
+sides,ufc-jus3-ili1-2026-06-14-totals-4pt5,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria over 4.5,1.6666669444444444,0.001,0.001,False,661.8090500000001,polymarket,-0.001
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-8.999999722222222,0.42000000000000004,0.42000000000000004,False,91.928567,espn,-0.42000000000000004
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-8.916666388888888,0.42,0.42,False,91.928567,espn,-0.42
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-8.833333055555556,0.44999999999999996,0.44999999999999996,False,91.928567,espn,-0.44999999999999996
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-8.749999722222222,0.42500000000000004,0.42500000000000004,False,91.928567,espn,-0.42500000000000004
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-8.666666388888888,0.435,0.435,False,91.928567,espn,-0.435
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-8.583333055555556,0.435,0.435,False,91.928567,espn,-0.435
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-8.499999722222222,0.435,0.435,False,91.928567,espn,-0.435
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-8.416666388888888,0.435,0.435,False,91.928567,espn,-0.435
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-8.333333055555556,0.46499999999999997,0.46499999999999997,False,91.928567,espn,-0.46499999999999997
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-8.249999722222222,0.435,0.435,False,91.928567,espn,-0.435
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-8.166666388888888,0.435,0.435,False,91.928567,espn,-0.435
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-8.083333055555556,0.435,0.435,False,91.928567,espn,-0.435
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-7.999999722222222,0.275,0.275,False,91.928567,espn,-0.275
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-7.916666388888888,0.325,0.325,False,91.928567,espn,-0.325
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-7.833333055555555,0.44,0.44,False,91.928567,espn,-0.44
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-7.749999722222222,0.45499999999999996,0.45499999999999996,False,91.928567,espn,-0.45499999999999996
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-7.666666388888888,0.45499999999999996,0.45499999999999996,False,91.928567,espn,-0.45499999999999996
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-7.583333055555555,0.445,0.445,False,91.928567,espn,-0.445
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-7.499999722222222,0.47000000000000003,0.47000000000000003,False,91.928567,espn,-0.47000000000000003
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-7.416666388888888,0.465,0.465,False,91.928567,espn,-0.465
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-7.333333055555555,0.45999999999999996,0.45999999999999996,False,91.928567,espn,-0.45999999999999996
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-7.249999722222222,0.465,0.465,False,91.928567,espn,-0.465
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-7.166666388888888,0.565,0.565,False,91.928567,espn,-0.565
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-7.083333055555555,0.465,0.465,False,91.928567,espn,-0.465
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-6.999999722222222,0.45999999999999996,0.45999999999999996,False,91.928567,espn,-0.45999999999999996
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-6.916666388888888,0.42500000000000004,0.42500000000000004,False,91.928567,espn,-0.42500000000000004
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-6.833333055555555,0.445,0.445,False,91.928567,espn,-0.445
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-6.749999722222222,0.48,0.48,False,91.928567,espn,-0.48
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-6.666666388888888,0.45999999999999996,0.45999999999999996,False,91.928567,espn,-0.45999999999999996
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-6.583333055555555,0.505,0.505,False,91.928567,espn,-0.505
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-6.499999722222222,0.51,0.51,False,91.928567,espn,-0.51
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-6.416666388888888,0.45499999999999996,0.45499999999999996,False,91.928567,espn,-0.45499999999999996
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-6.333333055555555,0.45499999999999996,0.45499999999999996,False,91.928567,espn,-0.45499999999999996
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-6.249999722222222,0.695,0.695,False,91.928567,espn,-0.695
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-6.166666388888888,0.39,0.39,False,91.928567,espn,-0.39
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-6.083333055555555,0.44499999999999995,0.44499999999999995,False,91.928567,espn,-0.44499999999999995
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-5.999999722222222,0.345,0.345,False,91.928567,espn,-0.345
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-5.916666388888888,0.305,0.305,False,91.928567,espn,-0.305
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-5.833333055555555,0.43,0.43,False,91.928567,espn,-0.43
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-5.749999722222222,0.5499999999999999,0.5499999999999999,False,91.928567,espn,-0.5499999999999999
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-5.666666388888888,0.45499999999999996,0.45499999999999996,False,91.928567,espn,-0.45499999999999996
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-5.583333055555555,0.43,0.43,False,91.928567,espn,-0.43
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-5.499999722222222,0.42500000000000004,0.42500000000000004,False,91.928567,espn,-0.42500000000000004
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-5.416666388888888,0.45,0.45,False,91.928567,espn,-0.45
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-5.333333055555555,0.445,0.445,False,91.928567,espn,-0.445
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-5.249999722222222,0.445,0.445,False,91.928567,espn,-0.445
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-5.166666388888888,0.445,0.445,False,91.928567,espn,-0.445
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-5.083333055555555,0.45999999999999996,0.45999999999999996,False,91.928567,espn,-0.45999999999999996
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-4.999999722222222,0.565,0.565,False,91.928567,espn,-0.565
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-4.916666388888888,0.445,0.445,False,91.928567,espn,-0.445
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-4.833333055555555,0.435,0.435,False,91.928567,espn,-0.435
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-4.749999722222222,0.45999999999999996,0.45999999999999996,False,91.928567,espn,-0.45999999999999996
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-4.666666388888888,0.45999999999999996,0.45999999999999996,False,91.928567,espn,-0.45999999999999996
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-4.583333055555555,0.445,0.445,False,91.928567,espn,-0.445
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-4.499999722222222,0.455,0.455,False,91.928567,espn,-0.455
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-4.416666388888888,0.445,0.445,False,91.928567,espn,-0.445
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-4.333333055555555,0.225,0.225,False,91.928567,espn,-0.225
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-4.249999722222222,0.01,0.01,False,91.928567,espn,-0.01
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-4.166666388888888,0.001,0.001,False,91.928567,espn,-0.001
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-4.083333055555555,0.001,0.001,False,91.928567,espn,-0.001
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-3.9999997222222223,0.001,0.001,False,91.928567,espn,-0.001
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-3.916666388888889,0.001,0.001,False,91.928567,espn,-0.001
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-3.8333330555555554,0.001,0.001,False,91.928567,espn,-0.001
+sides,ufc-mat-ale35-2026-06-06-totals-1pt5,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa over 1.5,-3.7499997222222223,0.001,0.001,False,91.928567,espn,-0.001
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-8.999999722222222,0.28,0.28,False,77.423072,espn,-0.28
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-8.916666388888888,0.28,0.28,False,77.423072,espn,-0.28
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-8.833333055555556,0.495,0.495,False,77.423072,espn,-0.495
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-8.749999722222222,0.475,0.475,False,77.423072,espn,-0.475
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-8.666666388888888,0.27,0.27,False,77.423072,espn,-0.27
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-8.583333055555556,0.01,0.01,False,77.423072,espn,-0.01
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-8.499999722222222,0.265,0.265,False,77.423072,espn,-0.265
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-8.416666388888888,0.475,0.475,False,77.423072,espn,-0.475
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-8.333333055555556,0.28,0.28,False,77.423072,espn,-0.28
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-8.249999722222222,0.01,0.01,False,77.423072,espn,-0.01
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-8.166666388888888,0.615,0.615,False,77.423072,espn,-0.615
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-8.083333055555556,0.59,0.59,False,77.423072,espn,-0.59
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-7.999999722222222,0.16,0.16,False,77.423072,espn,-0.16
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-7.833333055555555,0.59,0.59,False,77.423072,espn,-0.59
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-7.749999722222222,0.01,0.01,False,77.423072,espn,-0.01
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-7.666666388888888,0.16,0.16,False,77.423072,espn,-0.16
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-7.583333055555555,0.01,0.01,False,77.423072,espn,-0.01
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-7.499999722222222,0.59,0.59,False,77.423072,espn,-0.59
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-7.416666388888888,0.5,0.5,False,77.423072,espn,-0.5
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-7.333333055555555,0.28,0.28,False,77.423072,espn,-0.28
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-7.249999722222222,0.5,0.5,False,77.423072,espn,-0.5
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-7.166666388888888,0.59,0.59,False,77.423072,espn,-0.59
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-7.083333055555555,0.24,0.24,False,77.423072,espn,-0.24
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-6.999999722222222,0.31,0.31,False,77.423072,espn,-0.31
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-6.916666388888888,0.265,0.265,False,77.423072,espn,-0.265
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-6.833333055555555,0.24,0.24,False,77.423072,espn,-0.24
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-6.749999722222222,0.495,0.495,False,77.423072,espn,-0.495
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-6.666666388888888,0.16,0.16,False,77.423072,espn,-0.16
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-6.583333055555555,0.255,0.255,False,77.423072,espn,-0.255
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-6.499999722222222,0.245,0.245,False,77.423072,espn,-0.245
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-6.416666388888888,0.265,0.265,False,77.423072,espn,-0.265
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-6.333333055555555,0.275,0.275,False,77.423072,espn,-0.275
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-6.249999722222222,0.305,0.305,False,77.423072,espn,-0.305
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-6.166666388888888,0.3,0.3,False,77.423072,espn,-0.3
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-6.083333055555555,0.59,0.59,False,77.423072,espn,-0.59
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-5.999999722222222,0.275,0.275,False,77.423072,espn,-0.275
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-5.916666388888888,0.91,0.91,False,77.423072,espn,-0.91
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-5.833333055555555,0.565,0.565,False,77.423072,espn,-0.565
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-5.749999722222222,0.30000000000000004,0.30000000000000004,False,77.423072,espn,-0.30000000000000004
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-5.666666388888888,0.21,0.21,False,77.423072,espn,-0.21
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-5.583333055555555,0.585,0.585,False,77.423072,espn,-0.585
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-5.499999722222222,0.265,0.265,False,77.423072,espn,-0.265
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-5.416666388888888,0.59,0.59,False,77.423072,espn,-0.59
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-5.333333055555555,0.31,0.31,False,77.423072,espn,-0.31
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-5.249999722222222,0.5800000000000001,0.5800000000000001,False,77.423072,espn,-0.5800000000000001
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-5.166666388888888,0.11,0.11,False,77.423072,espn,-0.11
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-5.083333055555555,0.235,0.235,False,77.423072,espn,-0.235
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-4.999999722222222,0.315,0.315,False,77.423072,espn,-0.315
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-4.916666388888888,0.265,0.265,False,77.423072,espn,-0.265
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-4.833333055555555,0.495,0.495,False,77.423072,espn,-0.495
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-4.749999722222222,0.16999999999999998,0.16999999999999998,False,77.423072,espn,-0.16999999999999998
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-4.666666388888888,0.495,0.495,False,77.423072,espn,-0.495
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-4.583333055555555,0.605,0.605,False,77.423072,espn,-0.605
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-4.416666388888888,0.28500000000000003,0.28500000000000003,False,77.423072,espn,-0.28500000000000003
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-4.333333055555555,0.29,0.29,False,77.423072,espn,-0.29
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-4.249999722222222,0.29,0.29,False,77.423072,espn,-0.29
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-4.166666388888888,0.325,0.325,False,77.423072,espn,-0.325
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-4.083333055555555,0.315,0.315,False,77.423072,espn,-0.315
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-3.9999997222222223,0.315,0.315,False,77.423072,espn,-0.315
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-3.916666388888889,0.31,0.31,False,77.423072,espn,-0.31
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-3.8333330555555554,0.345,0.345,False,77.423072,espn,-0.345
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-3.7499997222222223,0.14,0.14,False,77.423072,espn,-0.14
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-3.666666388888889,0.01,0.01,False,77.423072,espn,-0.01
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-3.5833330555555554,0.73,0.73,False,77.423072,espn,-0.73
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-3.4999997222222223,0.499,0.499,False,77.423072,espn,-0.499
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-3.416666388888889,0.003,0.003,False,77.423072,espn,-0.003
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-3.3333330555555554,0.001,0.001,False,77.423072,espn,-0.001
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-3.2499997222222223,0.001,0.001,False,77.423072,espn,-0.001
+sides,ufc-jun4-iwo-2026-06-06-totals-1pt5,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski over 1.5,-3.166666388888889,0.001,0.001,False,77.423072,espn,-0.001
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-6.583333055555555,0.665,0.665,False,16510.958108,espn,-0.665
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-6.416666388888888,0.675,0.675,False,16510.958108,espn,-0.675
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-6.333333055555555,0.675,0.675,False,16510.958108,espn,-0.675
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-6.249999722222222,0.675,0.675,False,16510.958108,espn,-0.675
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-6.166666388888888,0.675,0.675,False,16510.958108,espn,-0.675
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-6.083333055555555,0.62,0.62,False,16510.958108,espn,-0.62
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-5.999999722222222,0.655,0.655,False,16510.958108,espn,-0.655
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-5.916666388888888,0.35000000000000003,0.35000000000000003,False,16510.958108,espn,-0.35000000000000003
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-5.833333055555555,0.66,0.66,False,16510.958108,espn,-0.66
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-5.749999722222222,0.675,0.675,False,16510.958108,espn,-0.675
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-5.666666388888888,0.675,0.675,False,16510.958108,espn,-0.675
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-5.583333055555555,0.675,0.675,False,16510.958108,espn,-0.675
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-5.499999722222222,0.675,0.675,False,16510.958108,espn,-0.675
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-5.416666388888888,0.63,0.63,False,16510.958108,espn,-0.63
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-5.333333055555555,0.2,0.2,False,16510.958108,espn,-0.2
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-5.249999722222222,0.001,0.001,False,16510.958108,espn,-0.001
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-5.166666388888888,0.159,0.159,False,16510.958108,espn,-0.159
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-5.083333055555555,0.612,0.612,False,16510.958108,espn,-0.612
+sides,ufc-mar42-antrom-2026-10-03-totals-1pt5,ufc-mar42-antrom-2026-10-03,Marcus McGhee vs Anthony Romero over 1.5,-4.999999722222222,0.001,0.001,False,16510.958108,espn,-0.001

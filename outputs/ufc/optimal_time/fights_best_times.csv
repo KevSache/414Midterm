@@ -1,0 +1,24 @@
+sample,market_id,cluster,label,hours_from_end,mid,profit,won,volume_clob,settle_source,charted_profit
+fights,ufc-bre1-edm-2026-06-06,ufc-bre1-edm-2026-06-06,Brendan Allen vs Edmen Shahbazyan,-8.999999722222222,0.595,0.405,True,684936.8593490003,polymarket,0.405
+fights,ufc-bry1-san6-2026-06-06,ufc-bry1-san6-2026-06-06,Bryce Mitchell vs Santiago Luna,-8.999999722222222,0.515,0.485,True,232.42378,espn,0.485
+fights,ufc-pri-che3-2026-06-06,ufc-pri-che3-2026-06-06,Priscila Cachoeira vs Chelsea Chandler,-8.999999722222222,0.495,0.495,False,68.54538400000001,espn,-0.495
+fights,ufc-ste6-die4-2026-06-14,ufc-ste6-die4-2026-06-14,Steve Garcia vs Diego Lopes,-8.999999722222222,0.445,0.445,False,712.7418640000001,espn,-0.445
+fights,ufc-ari1-ket1-2026-06-06,ufc-ari1-ket1-2026-06-06,Ariane Carnelossi vs Ketlen Souza,-8.749999722222222,0.26,0.26,False,16.980232,espn,-0.26
+fights,ufc-mat-ale35-2026-06-06,ufc-mat-ale35-2026-06-06,Matt Schnell vs Alessandro Costa,-8.583333055555556,0.23,0.23,False,6.046499000000001,espn,-0.23
+fights,ufc-joa4-jor10-2026-06-06,ufc-joa4-jor10-2026-06-06,Joanderson Brito vs Jordan Leavitt,-8.416666388888888,0.59,0.41000000000000003,True,1663.4662879999998,espn,0.41000000000000003
+fights,ufc-mar42-joh41-2026-06-06,ufc-mar42-joh41-2026-06-06,Marcus McGhee vs John Yannis,-8.333333055555556,0.755,0.245,True,6983.0199059999995,espn,0.245
+fights,ufc-yun-jei-2026-06-06,ufc-yun-jei-2026-06-06,Yuneisy Duben vs Jeisla Chaves,-8.166666388888888,0.32,0.32,False,398.58752,espn,-0.32
+fights,ufc-bru-ed-2026-06-06,ufc-bru-ed-2026-06-06,Bruno Silva vs Édgar Cháirez,-7.916666388888888,0.55,0.55,False,1971.9601269999996,espn,-0.55
+fights,ufc-kyl3-bon-2026-06-14,ufc-kyl3-bon-2026-06-14,Kyle Daukaus vs Bo Nickal,-7.749999722222222,0.28500000000000003,0.28500000000000003,False,2656.5790079999997,espn,-0.28500000000000003
+fights,ufc-mer-pet-2026-10-24,ufc-mer-pet-2026-10-24,Merab Dvalishvili vs Petr Yan,-6.749999722222222,0.765,0.765,False,153.846154,espn,-0.765
+fights,ufc-kar3-lua4-2026-06-20,ufc-kar3-lua4-2026-06-20,Karol Rosa vs Luana Santos,-6.333333055555555,0.53,0.53,False,0.0,espn,-0.53
+fights,ufc-gau-stador-2026-08-22,ufc-gau-stador-2026-08-22,Gauge Young vs Stan Dorsainvil,-5.749999722222222,0.001,0.001,False,400654.6053330005,polymarket,-0.001
+fights,ufc-ald-ste35-2026-07-18,ufc-ald-ste35-2026-07-18,Alden Coria vs Stewart Nicoll,-5.499999722222222,0.013,0.987,True,192673.3624989998,polymarket,0.987
+fights,ufc-far-tom14-2026-06-06,ufc-far-tom14-2026-06-06,Farés Ziam vs Tom Nolan,-4.916666388888888,0.76,0.76,False,287.431005,polymarket,-0.76
+fights,ufc-jun4-iwo-2026-06-06,ufc-jun4-iwo-2026-06-06,Junior Tafa vs Iwo Baraniewski,-3.0833330555555554,0.987,0.987,False,1004.5608100000001,espn,-0.987
+fights,ufc-mic12-mau4-2026-06-14,ufc-mic12-mau4-2026-06-14,Michael Chandler vs Mauricio Ruffy,-1.999999722222222,0.255,0.255,False,3486.2267340000003,espn,-0.255
+fights,ufc-die-bil1-2026-08-08,ufc-die-bil1-2026-08-08,Diego Ferreira vs Billy Quarantillo,-1.749999722222222,0.999,0.0010000000000000009,True,503016.6775750003,polymarket,0.0010000000000000009
+fights,ufc-bel-gab3-2026-06-06,ufc-bel-gab3-2026-06-06,Belal Muhammad vs Gabriel Bonfim,-1.5833330555555556,0.5700000000000001,0.5700000000000001,False,3540.9873860000007,polymarket,-0.5700000000000001
+fights,ufc-der-jos52-2026-06-14,ufc-der-jos52-2026-06-14,Derrick Lewis vs Josh Hokit,-1.4166663888888889,0.3,0.3,False,2200323.213743993,espn,-0.3
+fights,ufc-cir-ale30-2026-06-14,ufc-cir-ale30-2026-06-14,Ciryl Gane vs Alex Pereira,-0.08333305555555556,0.43000000000000005,0.57,True,5441490.007365031,polymarket,0.57
+fights,ufc-jus3-ili1-2026-06-14,ufc-jus3-ili1-2026-06-14,Justin Gaethje vs Ilia Topuria,0.16666694444444444,0.195,0.8049999999999999,True,15529.155239000003,polymarket,0.8049999999999999

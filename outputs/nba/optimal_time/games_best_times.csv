@@ -1,0 +1,15 @@
+sample,market_id,cluster,label,hours_from_tip,mid,profit,won,volume_clob,settle_source,charted_profit
+games,nba-chi-tor-2026-10-21,nba-chi-tor-2026-10-21,Bulls vs. Raptors,-5.666666666666667,0.225,0.225,False,80448.262501,espn,-0.225
+games,nba-sas-okc-2026-05-30,nba-sas-okc-2026-05-30,Spurs vs. Thunder,-4.0,0.425,0.575,True,1212717.084074,espn,0.575
+games,nba-cha-bkn-2026-10-21,nba-cha-bkn-2026-10-21,Hornets vs. Nets,0.25,0.435,0.565,True,496100.8025579999,espn,0.565
+games,nba-dal-hou-2026-10-21,nba-dal-hou-2026-10-21,Mavericks vs. Rockets,0.3333333333333333,0.245,0.245,False,244393.541136,espn,-0.245
+games,nba-uta-mem-2026-10-21,nba-uta-mem-2026-10-21,Jazz vs. Grizzlies,0.5833333333333334,0.6,0.6,False,136481.148119,espn,-0.6
+games,nba-det-min-2026-10-14,nba-det-min-2026-10-14,Pistons vs. Timberwolves,0.6666666666666666,0.255,0.745,True,32445.907217000004,polymarket,0.745
+games,nba-nyk-sas-2026-06-05,nba-nyk-sas-2026-06-05,Knicks vs. Spurs,0.75,0.225,0.775,True,129.172659,polymarket,0.775
+games,nba-sas-nyk-2026-06-08,nba-sas-nyk-2026-06-08,Spurs vs. Knicks,1.3333333333333333,0.33,0.6699999999999999,True,0.0,polymarket,0.6699999999999999
+games,nba-ind-nop-2026-10-21,nba-ind-nop-2026-10-21,Pacers vs. Pelicans,2.0,0.28500000000000003,0.715,True,213988.246967,espn,0.715
+games,nba-nyk-sas-2026-06-13,nba-nyk-sas-2026-06-13,Knicks vs. Spurs,2.0,0.18,0.8200000000000001,True,0.0,espn,0.8200000000000001
+games,nba-mil-cha-2026-10-11,nba-mil-cha-2026-10-11,Bucks vs. Hornets,2.25,0.001,0.001,False,112297.57721299998,polymarket,-0.001
+games,nba-sas-nyk-2026-06-10,nba-sas-nyk-2026-06-10,Spurs vs. Knicks,2.5,0.95,0.95,False,3100.741124000003,polymarket,-0.95
+games,nba-lac-tor-2026-10-10,nba-lac-tor-2026-10-10,Clippers vs. Raptors,2.75,0.001,0.001,False,122083.39538299991,espn,-0.001
+games,nba-sac-lac-2026-10-21,nba-sac-lac-2026-10-21,Kings vs. Clippers,2.75,0.765,0.765,False,29823.274816999998,espn,-0.765

@@ -1,0 +1,18 @@
+games accuracy
+
+This uses every settled market in the optimal-time sample, not the top-10 chart sample. At each five-minute mark, mean win chance is the average mid and actual win rate is the share of those markets whose charted outcome happened. Each market votes once.
+Relative accuracy is 1 minus the absolute gap between those two. Profit at a mark is the average profit of buying the side that paid 1, about 1 minus the winner's price. It is large when the winner was cheap and shrinks as that price moves toward 1. Profit score rescales that profit from 0 at the worst eligible mark to 1 at the best. The joint score is half profit score and half relative accuracy. A mark needs at least 8 markets before it can win.
+
+Best joint time: -5.83 hours from listed tip. Mean profit +0.481 per share. Price 0.40, won 50%. Relative accuracy 0.90. Joint 0.93. Markets 8.
+
+Price bands. A calibrated band resolves positive about as often as its price.
+  0.00–0.10: price 0.01, resolved positive for 0% of 7 markets (96 bins).
+  0.10–0.20: price 0.16, resolved positive for 20% of 5 markets (20 bins).
+  0.20–0.30: price 0.25, resolved positive for 50% of 8 markets (180 bins).
+  0.30–0.40: price 0.35, resolved positive for 71% of 7 markets (351 bins).
+  0.40–0.50: price 0.45, resolved positive for 70% of 10 markets (315 bins).
+  0.50–0.60: price 0.55, resolved positive for 78% of 9 markets (172 bins).
+  0.60–0.70: price 0.64, resolved positive for 67% of 9 markets (48 bins).
+  0.70–0.80: price 0.75, resolved positive for 75% of 8 markets (23 bins).
+  0.80–0.90: price 0.84, resolved positive for 88% of 8 markets (18 bins).
+  0.90–1.00: price 0.97, resolved positive for 88% of 8 markets (60 bins).

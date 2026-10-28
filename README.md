@@ -274,6 +274,8 @@ python examples/ufc_analysis.py --find top5
 python examples/ufc_analysis.py --plots-only
 ```
 
+Each five-minute mid is the market's win chance for the charted fighter. A mid above 0.5 is scored as a predicted win and a mid below 0.5 as a predicted loss. `accuracy_by_time.csv` does that at every five-minute mark, with one vote per fight. `accuracy_by_price.csv` groups the same prices into 10-point bands and compares the band's average price with the share of fights that fighter won. A band sitting on the diagonal of `prediction_accuracy.png` is calibrated: a 70% price won about 70% of the time. The Brier score in the same folder is the average squared gap between the price and the 1-or-0 result. A coin flip scores 0.25.
+
 The default keeps up to 10 fights that have matched volume of at least 100 and a posted book, ranked so both are high. Results land in `outputs/ufc/`. A full run reads the hourly files around each card. Fights before the Parquet files begin (May 30, 2026) have no order book to read. `--plots-only` redraws the charts from the CSVs already in that folder.
 
 ## Is there a better time to bet?

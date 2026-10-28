@@ -260,6 +260,24 @@ The price, variance, bid-ask gap, and large-order charts are the Over price. A p
 
 The class database does not store the point margin. `won` is the Polymarket resolution, and the score, quarter lines, and margin come from ESPN. `markets.best_bid` is the latest snapshot, not the history, so the price charts come from the Parquet files. A game winner is charted only when its token was in the order book and its matched volume is at least 1,000. A prop is charted when its token was in the order book and its matched volume is above zero.
 
+## Is there a better time to bet?
+
+`examples/optimal_time.py` asks that with every completed game winner, and with every points, assists, and rebounds line that has matched volume above zero. It does not use the top-10 cutoff or the 1,000 volume floor.
+
+The profit of buying one share at a five-minute mid and holding to settlement is settlement minus that mid. Inside one market the best time to buy is the bin where the mid was lowest, because settlement does not change. The script records that time. The line it fits is a different object: every bin, after each market's average profit is removed,
+
+```text
+profit = market effect + beta * hours from tip
+```
+
+beta is the change in expected profit per share from waiting one more hour. A beta near zero, with the 95% interval inside about 2 cents an hour, means there is no practical straight-line relationship. That does not rule out a best time in the middle of the window. The half-hour averages in the same folder are that check. Standard errors are clustered by game, so several prop lines from one game count as one game.
+
+```bash
+python examples/optimal_time.py
+```
+
+The run reads each distinct hour from six hours before tip through three hours after, once. For the completed games in this extract that is a few hundred hours. Results land in `outputs/nba/optimal_time/`. A second run reuses `cache/` in that folder. An hour that failed to download is not cached, so the next run tries it again.
+
 ## Update your local copy
 
 After this repository changes, download those commits from the same folder in Ubuntu:

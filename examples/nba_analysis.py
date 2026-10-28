@@ -261,6 +261,7 @@ def hour_key(moment):
 
 
 def read_hour(duck, moment, pairs):
+    """Five-minute best bid and ask. None when the hour file could not be read."""
     if not pairs:
         return pd.DataFrame()
     url = f"{BUCKET}/events-{hour_key(moment)}.parquet"
@@ -279,7 +280,7 @@ def read_hour(duck, moment, pairs):
         rows = duck.execute(sql).fetchall()
     except Exception as error:
         print(f"  skip {hour_key(moment)}: {error.__class__.__name__}")
-        return pd.DataFrame()
+        return None
     frame = pd.DataFrame(rows, columns=["market", "asset_id", "bin", "best_bid", "best_ask"])
     return frame
 

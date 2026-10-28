@@ -292,11 +292,13 @@ profit = market effect + beta * hours from tip
 
 beta is the change in expected profit per share from waiting one more hour. A beta near zero, with the 95% interval inside about 2 cents an hour, means there is no practical straight-line relationship. That does not rule out a best time in the middle of the window. The half-hour averages in the same folder are that check. Standard errors are clustered by game, so several prop lines from one game count as one game.
 
+The same run scores accuracy on that full sample. The top-10 chart sample is too small for a price band. At each five-minute mark, `games_accuracy_by_time.csv` and `props_accuracy_by_time.csv` compare the average price with the share of markets that won. `games_prediction_accuracy.png` and `props_prediction_accuracy.png` draw that check and the 10-point price bands. Relative accuracy is 1 when the win rate equals the price. Mean profit at that mark is the win rate minus the average price, so a minute priced exactly right earns about zero and a cheap minute scores lower on accuracy. The marked time on `games_profit_vs_accuracy.png` and `props_profit_vs_accuracy.png` is the five-minute mark that maximizes the average of that accuracy and mean profit rescaled from 0 to 1 across the eligible marks. A mark needs 8 markets before it can win. When the fullest mark is thinner than that, the floor drops to that fullest count. The numbers are in `games_accuracy.txt` and `props_accuracy.txt`.
+
 ```bash
 python examples/optimal_time.py
 ```
 
-The run reads each distinct hour from six hours before tip through three hours after, once. For the completed games in this extract that is a few hundred hours. Results land in `outputs/nba/optimal_time/`. A second run reuses `cache/` in that folder. An hour that failed to download is not cached, so the next run tries it again.
+The run reads each distinct hour from six hours before tip through three hours after, once. For the completed games in this extract that is a few hundred hours. Results land in `outputs/nba/optimal_time/`. Games and props are written separately, so the files are `games_accuracy_by_time.csv`, `props_prediction_accuracy.png`, and the same pair of names for the other sample. A second run reuses `cache/` in that folder. An hour that failed to download is not cached, so the next run tries it again.
 
 ## Update your local copy
 

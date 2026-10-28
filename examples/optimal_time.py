@@ -18,6 +18,14 @@ line. A profit hump in the middle of the window can still hide inside a
 near-zero slope, so the script also writes the mean profit in each half
 hour.
 
+The same full sample, not the top-10 chart sample, is scored for
+accuracy. At each five-minute mark the average price is compared with
+the share of markets that won. Relative accuracy is 1 when those match.
+Mean profit at that mark is the win rate minus the average price, so a
+mark priced exactly right earns about zero and a cheap mark scores
+lower on accuracy. The marked time maximizes the average of that
+accuracy and a 0-to-1 rescaling of mean profit.
+
 The hourly files supply the mid. Posted size is not used. Postgres has
 no price history. The window is the six hours before tip through the
 three hours after, for every completed game winner and for every points,
@@ -40,6 +48,7 @@ import numpy as np
 import pandas as pd
 
 import nba_analysis as nba
+import prediction_score as predict
 
 OUTPUT = Path("outputs/nba/optimal_time")
 CACHE = OUTPUT / "cache"
@@ -48,6 +57,9 @@ CACHE = OUTPUT / "cache"
 # from the first bin to the last.
 PRACTICAL_BETA = 0.02
 MIN_BINS = 3
+# A five-minute mark needs this many markets before it can be the joint
+# best time. Thinner samples use the fullest mark in the table instead.
+MIN_SLOT_MARKETS = 8
 
 
 def as_utc(value):
@@ -429,6 +441,194 @@ def plot_sample(sample, best, means, within):
     plt.close(fig)
 
 
+def scored_panel(panel):
+    """Win chance, outcome, and call columns on the optimal-time panel."""
+    if panel is None or panel.empty:
+        return panel
+    frame = panel.copy()
+    frame["slug"] = frame["market_id"].astype(str)
+    codes = {market: index for index, market in enumerate(frame["market_id"].drop_duplicates(), start=1)}
+    frame["rank"] = frame["market_id"].map(codes)
+    summary = frame.groupby("rank", as_index=False)["won"].first()
+    return predict.score_predictions(frame, summary)
+
+
+def profit_by_minute(scored):
+    """Mean buy-and-hold profit at each five-minute mark, one vote per market."""
+    columns = ["minutes_from_tip", "mean_profit"]
+    if scored is None or scored.empty or "profit" not in scored.columns:
+        return pd.DataFrame(columns=columns)
+    frame = scored.dropna(subset=["profit", "hours_from_tip", "slug"]).copy()
+    if frame.empty:
+        return pd.DataFrame(columns=columns)
+    minutes = (pd.to_numeric(frame["hours_from_tip"], errors="coerce") * 60).round()
+    frame["minutes_from_tip"] = (minutes / 5).round() * 5
+    per_market = frame.groupby(["minutes_from_tip", "slug"], as_index=False)["profit"].mean()
+    grouped = per_market.groupby("minutes_from_tip", as_index=False)["profit"].mean()
+    grouped = grouped.rename(columns={"profit": "mean_profit"})
+    grouped["minutes_from_tip"] = grouped["minutes_from_tip"].astype(int)
+    return grouped
+
+
+def slot_floor(table):
+    if table is None or table.empty:
+        return MIN_SLOT_MARKETS
+    fullest = int(table["markets"].max())
+    return min(MIN_SLOT_MARKETS, max(fullest, 1))
+
+
+def add_joint_score(table):
+    """Scale profit onto 0–1 and average it with relative accuracy.
+
+    Relative accuracy is 1 when the win rate equals the average price,
+    and falls by the absolute gap. A price of 0.54 that wins 54% of the
+    time scores 1. A price of 0.54 that wins 4% scores 0.50.
+    """
+    if table is None or table.empty:
+        return table
+    frame = table.copy()
+    gap = (frame["actual_win_rate"] - frame["mean_win_chance"]).abs()
+    frame["relative_accuracy"] = (1 - gap).clip(lower=0, upper=1)
+    floor = slot_floor(frame)
+    frame["eligible"] = frame["markets"] >= floor
+    frame["profit_score"] = np.nan
+    frame["joint"] = np.nan
+    eligible = frame["eligible"] & frame["mean_profit"].notna() & frame["relative_accuracy"].notna()
+    if not eligible.any():
+        return frame
+    profits = frame.loc[eligible, "mean_profit"]
+    low = float(profits.min())
+    high = float(profits.max())
+    span = high - low
+    if span <= 1e-12:
+        frame.loc[eligible, "profit_score"] = 1.0
+    else:
+        frame.loc[eligible, "profit_score"] = (frame.loc[eligible, "mean_profit"] - low) / span
+    frame.loc[eligible, "joint"] = 0.5 * frame.loc[eligible, "profit_score"] + 0.5 * frame.loc[eligible, "relative_accuracy"]
+    return frame
+
+
+def choose_joint_time(table):
+    """Highest joint score. Ties prefer higher profit, then the earlier mark."""
+    if table is None or table.empty or "joint" not in table.columns:
+        return None
+    eligible = table.dropna(subset=["joint"])
+    if eligible.empty:
+        return None
+    ordered = eligible.sort_values(
+        ["joint", "mean_profit", "minutes_from_tip"],
+        ascending=[False, False, True],
+    )
+    return ordered.iloc[0]
+
+
+def accuracy_text(sample, table, best, by_price):
+    lines = [f"{sample} accuracy", ""]
+    lines.append(
+        "This uses every settled market in the optimal-time sample, not the top-10 chart sample. "
+        "At each five-minute mark, mean win chance is the average mid and actual win rate is the share "
+        "of those markets whose charted outcome happened. Each market votes once."
+    )
+    lines.append(
+        "Relative accuracy is 1 minus the absolute gap between those two. "
+        "Mean profit at a mark is that win rate minus the average price, so a mark priced exactly right earns about zero. "
+        "Profit score rescales mean profit from 0 at the worst eligible mark to 1 at the best. "
+        "The joint score is half profit score and half relative accuracy. "
+        f"A mark needs at least {slot_floor(table)} markets before it can win."
+    )
+    lines.append("")
+    if best is None:
+        lines.append("No five-minute mark had a settled price.")
+    else:
+        lines.append(
+            f"Best joint time: {best['hours_from_tip']:+.2f} hours from tip. "
+            f"Mean profit {best['mean_profit']:+.3f} per share. "
+            f"Price {best['mean_win_chance']:.2f}, won {best['actual_win_rate']:.0%}. "
+            f"Relative accuracy {best['relative_accuracy']:.2f}. "
+            f"Joint {best['joint']:.2f}. "
+            f"Markets {int(best['markets'])}."
+        )
+    lines.append("")
+    lines.append("Price bands. A calibrated band resolves positive about as often as its price.")
+    if by_price is None or by_price.empty:
+        lines.append("No band had a settled quote.")
+    else:
+        for _, row in by_price.iterrows():
+            lines.append(
+                f"  {row['band']}: price {row['mean_win_chance']:.2f}, "
+                f"resolved positive for {row['actual_win_rate']:.0%} of {int(row['markets'])} markets "
+                f"({int(row['bins'])} bins)."
+            )
+    return "\n".join(lines) + "\n"
+
+
+def plot_joint(sample, table, best):
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.4))
+    if table is None or table.empty:
+        axes[0].text(0.5, 0.5, "No settled quotes", ha="center", va="center")
+        axes[1].text(0.5, 0.5, "No settled quotes", ha="center", va="center")
+    else:
+        hours = table["hours_from_tip"]
+        left = axes[0]
+        left.plot(hours, table["mean_profit"], color="#1f4e79", marker="o", linewidth=1.3, label="Mean profit per share")
+        left.set_ylabel("Mean profit per share")
+        right_axis = left.twinx()
+        right_axis.plot(hours, table["relative_accuracy"], color="#d9762c", marker="o", linewidth=1.3, label="Relative accuracy")
+        right_axis.set_ylabel("Relative accuracy")
+        right_axis.set_ylim(-0.05, 1.05)
+        handles, labels = left.get_legend_handles_labels()
+        more_handles, more_labels = right_axis.get_legend_handles_labels()
+        left.legend(handles + more_handles, labels + more_labels, fontsize=8, loc="best")
+        axes[1].plot(hours, table["joint"], color="#2f6f4e", marker="o", linewidth=1.3)
+        axes[1].set_ylabel("Joint score")
+        axes[1].set_ylim(-0.05, 1.05)
+        if best is not None:
+            for axis in (left, axes[1]):
+                axis.axvline(best["hours_from_tip"], color="#2f6f4e", linewidth=1.1)
+            axes[1].scatter([best["hours_from_tip"]], [best["joint"]], color="#2f6f4e", s=40, zorder=3)
+    for axis in axes:
+        axis.axvline(0, color="#b0b0b0", linewidth=0.8)
+        axis.set_xlabel("Hours from listed tip")
+        axis.grid(axis="y", color="#eeeeee")
+    axes[0].set_title("Profit and accuracy")
+    axes[1].set_title("Half profit score, half accuracy")
+    fig.suptitle(sample)
+    fig.tight_layout()
+    fig.savefig(OUTPUT / f"{sample}_profit_vs_accuracy.png", dpi=140)
+    plt.close(fig)
+
+
+def write_accuracy(sample, panel):
+    """Accuracy by time and by price, then the clock time that balances both with profit."""
+    scored = scored_panel(panel)
+    by_time, by_price = predict.accuracy_tables(scored, clock="hours_from_tip")
+    if not by_time.empty:
+        profits = profit_by_minute(scored)
+        by_time = by_time.merge(profits, on="minutes_from_tip", how="left")
+        by_time = add_joint_score(by_time)
+    best = choose_joint_time(by_time)
+    if best is not None and not by_time.empty:
+        by_time["chosen"] = by_time["minutes_from_tip"] == int(best["minutes_from_tip"])
+    by_time.to_csv(OUTPUT / f"{sample}_accuracy_by_time.csv", index=False)
+    by_price.to_csv(OUTPUT / f"{sample}_accuracy_by_price.csv", index=False)
+    text = accuracy_text(sample, by_time, best, by_price)
+    (OUTPUT / f"{sample}_accuracy.txt").write_text(text, encoding="utf-8")
+    print(text, flush=True)
+    if scored is not None and not scored.empty:
+        predict.plot_prediction(
+            scored,
+            OUTPUT,
+            clock="hours_from_tip",
+            xlabel="Hours from listed tip",
+            outcome_label="Charted outcome happened",
+        )
+        saved = OUTPUT / "prediction_accuracy.png"
+        target = OUTPUT / f"{sample}_prediction_accuracy.png"
+        if saved.exists():
+            saved.replace(target)
+    plot_joint(sample, by_time, best)
+
+
 def run_sample(sample, panel):
     frame = panel[panel["sample"] == sample].copy()
     frame = frame.groupby("market_id").filter(lambda part: len(part) >= MIN_BINS)
@@ -444,6 +644,7 @@ def run_sample(sample, panel):
     means.to_csv(OUTPUT / f"{sample}_half_hours.csv", index=False)
     write_report(sample, frame, best, within, pooled, means)
     plot_sample(sample, best, means, within)
+    write_accuracy(sample, frame)
 
 
 def main():

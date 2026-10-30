@@ -1,7 +1,7 @@
 fights accuracy
 
 This uses every settled market in the optimal-time sample, not the top-10 chart sample. At each five-minute mark, mean win chance is the average mid and actual win rate is the share of those markets whose charted fighter won. Each market votes once. The joint chart uses half hours instead, for the same reason: one market entering a single five-minute bin does not move the line.
-Relative accuracy is 1 minus the absolute gap between those two. Profit at a half hour is the average profit of buying the side that paid 1, about 1 minus the winner's price. It is large when the winner was cheap and shrinks as that price moves toward 1. Profit score rescales that profit from 0 at the worst eligible half hour to 1 at the best. The joint score is half profit score and half relative accuracy. A half hour needs at least 8 markets before it can win.
+Relative accuracy is 1 minus the absolute gap between those two. Profit at a half hour is the average profit of buying the side that paid 1, about 1 minus the winner's price. It is large when the winner was cheap and shrinks as that price moves toward 1. Profit score rescales that profit from 0 at the worst half hour with enough markets to 1 at the best. Thinner half hours are placed on that same scale, so the line continues through the last quote. The joint score is half profit score and half relative accuracy. A half hour needs at least 8 markets before it can be selected.
 
 Best joint half hour: -8.50 hours from the listed market end. Mean profit +0.410 per share. Price 0.43, won 32%. Relative accuracy 0.88. Joint 0.94. Markets 19.
 

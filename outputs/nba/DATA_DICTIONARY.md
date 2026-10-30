@@ -19,7 +19,7 @@ One row per panel.
 | `tip_utc` | Listed tip, taken from markets.end_date. Stored in UTC. |
 | `pregame_std` | Standard deviation of the 5-minute mid over the 6 hours before tip. Blank when fewer than 3 bins exist. |
 | `in_game_std` | Standard deviation of the 5-minute mid over the first 2.5 hours after tip. Blank when fewer than 3 bins exist. |
-| `pregame_price` | Last mid before the listed tip. |
+| `pregame_price` | Last mid before the listed tip. Blank when the saved book starts after tip. |
 | `won` | True when the charted team won on Polymarket. resolutions.resolved_yes is true when the first outcome won, and the away team is that first outcome. Blank when the market has no resolution row. |
 | `spread` | Title of the highest-volume full-game spread in this event. |
 | `spread_pregame` | Last mid before tip on the charted team's side of that spread. |
@@ -28,7 +28,7 @@ One row per panel.
 | `variance_score_late` | Mean variance score from 1.25 hours after tip until 2.5 hours after tip. |
 | `variance_score_live` | Mean variance score over the first 2.5 hours after tip. |
 | `minutes_to_decided` | Minutes after tip when the mid first reaches 0.90 or 0.10. Blank if that never happens in the saved window. |
-| `large_n` | Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed. |
+| `large_n` | Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed. The median and this count use only prints within 10 cents of the mid in that five-minute bin. |
 | `followed_n` | How many of those large sizes were followed by a mid move of at least 0.03 in the same direction over the next 30 minutes. A buy has to move the mid up. A sell has to move it down. |
 | `led_score_n` | How many large sizes both followed the price and arrived at least 15 seconds after the previous event and within 2 minutes before the next one. |
 | `espn_team_score` | Charted team's final score from ESPN. |
@@ -42,6 +42,7 @@ One row per panel.
 | `opponent_code` | Three-letter code of the other team. |
 | `pregame_n` | How many 5-minute bins fall in the 6 hours before tip. |
 | `in_game_n` | How many 5-minute bins fall in the first 2.5 hours after tip. |
+| `first_price` | Earliest mid in the saved window. Charts use this when pregame_price is blank. |
 | `spread_line` | Point number of that spread from the charted team's side. Negative means that team is laying the points. |
 | `bid_ask_pregame` | Mean of ask minus bid over the hour before tip. |
 | `bid_ask_live` | Mean of ask minus bid over the first 2.5 hours after tip. |
@@ -49,8 +50,8 @@ One row per panel.
 | `total_hit` | True when final_points is above total_line. |
 | `book_size` | Sum of posted size (size greater than 0) for the charted token in the hour before tip, the tip hour, and the hour after. Posted size is the offer traffic in the book. It is not matched trade volume. |
 | `book_updates` | How many of those posted-size rows the charted token had in those three hours. |
-| `balance` | Lower of this market's matched-volume percentile and its posted-size percentile, among NBA markets that have an order book and volume_clob of at least 1,000. Panels are sorted by this, highest first, so both numbers have to be high. |
-| `volume_clob` | Stored lifetime matched CLOB volume of this contract, in dollars. It is a snapshot from the markets table. A market under 1,000 is left out of the charts. |
+| `balance` | Lower of this market's matched-volume percentile and its posted-size percentile among the markets that were eligible. Panels are sorted by this, highest first, so both numbers have to be high. Game winners are eligible at volume_clob of at least 1,000. Props are eligible at any matched volume above zero. |
+| `volume_clob` | Stored lifetime matched CLOB volume of this contract, in dollars. It is a snapshot from the markets table. Game-winner charts leave out markets under 1,000. Prop charts leave out markets at zero. |
 | `score_source` | ESPN event id, written as espn:<id>. |
 
 ## `price_paths.csv`
@@ -89,7 +90,7 @@ One row per extra line read from the same hours.
 | `line` | Spread number from the charted team's side. Negative means that team is laying the points. |
 | `pregame_price` | Last mid before tip on that team's side of this spread. |
 | `title` | Market title from the markets table. |
-| `volume_clob` | Stored lifetime matched CLOB volume of this contract, in dollars. It is a snapshot from the markets table. A market under 1,000 is left out of the charts. |
+| `volume_clob` | Stored lifetime matched CLOB volume of this contract, in dollars. It is a snapshot from the markets table. Game-winner charts leave out markets under 1,000. Prop charts leave out markets at zero. |
 
 ## `game_results.csv`
 
@@ -106,7 +107,7 @@ The summary rows for panels that had an order book. The columns match summary.cs
 | `tip_utc` | Listed tip, taken from markets.end_date. Stored in UTC. |
 | `pregame_std` | Standard deviation of the 5-minute mid over the 6 hours before tip. Blank when fewer than 3 bins exist. |
 | `in_game_std` | Standard deviation of the 5-minute mid over the first 2.5 hours after tip. Blank when fewer than 3 bins exist. |
-| `pregame_price` | Last mid before the listed tip. |
+| `pregame_price` | Last mid before the listed tip. Blank when the saved book starts after tip. |
 | `won` | True when the charted team won on Polymarket. resolutions.resolved_yes is true when the first outcome won, and the away team is that first outcome. Blank when the market has no resolution row. |
 | `spread` | Title of the highest-volume full-game spread in this event. |
 | `spread_pregame` | Last mid before tip on the charted team's side of that spread. |
@@ -115,7 +116,7 @@ The summary rows for panels that had an order book. The columns match summary.cs
 | `variance_score_late` | Mean variance score from 1.25 hours after tip until 2.5 hours after tip. |
 | `variance_score_live` | Mean variance score over the first 2.5 hours after tip. |
 | `minutes_to_decided` | Minutes after tip when the mid first reaches 0.90 or 0.10. Blank if that never happens in the saved window. |
-| `large_n` | Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed. |
+| `large_n` | Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed. The median and this count use only prints within 10 cents of the mid in that five-minute bin. |
 | `followed_n` | How many of those large sizes were followed by a mid move of at least 0.03 in the same direction over the next 30 minutes. A buy has to move the mid up. A sell has to move it down. |
 | `led_score_n` | How many large sizes both followed the price and arrived at least 15 seconds after the previous event and within 2 minutes before the next one. |
 | `espn_team_score` | Charted team's final score from ESPN. |
@@ -129,6 +130,7 @@ The summary rows for panels that had an order book. The columns match summary.cs
 | `opponent_code` | Three-letter code of the other team. |
 | `pregame_n` | How many 5-minute bins fall in the 6 hours before tip. |
 | `in_game_n` | How many 5-minute bins fall in the first 2.5 hours after tip. |
+| `first_price` | Earliest mid in the saved window. Charts use this when pregame_price is blank. |
 | `spread_line` | Point number of that spread from the charted team's side. Negative means that team is laying the points. |
 | `bid_ask_pregame` | Mean of ask minus bid over the hour before tip. |
 | `bid_ask_live` | Mean of ask minus bid over the first 2.5 hours after tip. |
@@ -136,8 +138,8 @@ The summary rows for panels that had an order book. The columns match summary.cs
 | `total_hit` | True when final_points is above total_line. |
 | `book_size` | Sum of posted size (size greater than 0) for the charted token in the hour before tip, the tip hour, and the hour after. Posted size is the offer traffic in the book. It is not matched trade volume. |
 | `book_updates` | How many of those posted-size rows the charted token had in those three hours. |
-| `balance` | Lower of this market's matched-volume percentile and its posted-size percentile, among NBA markets that have an order book and volume_clob of at least 1,000. Panels are sorted by this, highest first, so both numbers have to be high. |
-| `volume_clob` | Stored lifetime matched CLOB volume of this contract, in dollars. It is a snapshot from the markets table. A market under 1,000 is left out of the charts. |
+| `balance` | Lower of this market's matched-volume percentile and its posted-size percentile among the markets that were eligible. Panels are sorted by this, highest first, so both numbers have to be high. Game winners are eligible at volume_clob of at least 1,000. Props are eligible at any matched volume above zero. |
+| `volume_clob` | Stored lifetime matched CLOB volume of this contract, in dollars. It is a snapshot from the markets table. Game-winner charts leave out markets under 1,000. Prop charts leave out markets at zero. |
 | `score_source` | ESPN event id, written as espn:<id>. |
 
 ## `large_orders.csv`
@@ -152,10 +154,10 @@ One row per unusually large posted size on the charted token. There is no wallet
 | `time` | UTC time of the book update. |
 | `hours_from_tip` | Hours after the listed tip. Negative values are before tip. |
 | `side` | BUY is a posted bid. SELL is a posted ask. This is a resting size, not a matched trade, and it has no wallet. |
-| `price` | Price of that posted size, on the 0 to 1 contract scale. |
+| `price` | Price of that posted size, on the 0 to 1 contract scale. A row more than 10 cents from the mid at that time is left out of large_orders.csv. |
 | `size` | Posted size. A size of 0 means the level was removed, and those rows are left out because a cancel and a fill look the same. |
-| `med_size` | Median posted size on this token and side in that clock hour. |
-| `size_ratio` | size divided by med_size. A row is kept when this is at least 10 and that side had at least 20 updates in the hour. |
+| `med_size` | Median posted size on this token and side in that clock hour, using only prints within 10 cents of the mid. |
+| `size_ratio` | size divided by med_size. A row is kept when this is at least 10, the price is within 10 cents of the mid, and that side had at least 20 such updates in the hour. |
 | `mid_at` | Latest 5-minute mid at or before this update. |
 | `mid_later` | Next 5-minute mid at least 30 minutes after this update. |
 | `price_followed` | True when mid_later is at least 0.03 further in the order's direction than mid_at. |

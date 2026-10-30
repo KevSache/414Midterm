@@ -78,6 +78,10 @@ MIN_VOLUME_CLOB = 1000
 MAX_PROP_EACH = 10
 DEFAULT_PROP_EACH = 4
 LARGE_SIZE_MULT = 10
+# A large print counts only when it is this close to the mid in that
+# five-minute bin. A one-cent bid while the market is at 50 cents is not
+# sitting at the market, so it is not an outlier in the book that can trade.
+NEAR_MID = 0.10
 FOLLOW_MOVE = 0.03
 PROP_STATS = ("points", "assists", "rebounds", "threes", "steals", "blocks")
 STAT_SHORT = {
@@ -280,11 +284,25 @@ def read_hour(duck, moment, pairs):
     return frame
 
 
+def drop_far_orders(frame):
+    """Keep posted sizes within NEAR_MID of the mid at that time.
+
+    The mid is the current market price. A huge size far from it is a resting
+    order away from the book that can trade, not a large order at the market.
+    """
+    if frame is None or frame.empty or "price" not in frame.columns or "mid_at" not in frame.columns:
+        return frame
+    price = pd.to_numeric(frame["price"], errors="coerce")
+    mid = pd.to_numeric(frame["mid_at"], errors="coerce")
+    return frame.loc[(price - mid).abs().le(NEAR_MID)].copy()
+
+
 def read_hour_scan(duck, moment, pairs):
     """One read of an hourly file: five-minute quotes, plus unusually large sizes.
 
-    A large size is at least 10 times the median size on that token and side.
-    Size 0 is a removed level, so those rows are left out. The file is read once.
+    A large size is at least 10 times the median size on that token and side,
+    among prints within 10 cents of that bin's mid. Size 0 is a removed level,
+    so those rows are left out. The file is read once.
     """
     empty_bins = pd.DataFrame(columns=["market", "asset_id", "bin", "best_bid", "best_ask"])
     empty_large = pd.DataFrame(columns=["ts_ms", "market", "asset_id", "side", "price", "size", "med_size"])
@@ -312,17 +330,45 @@ def read_hour_scan(duck, moment, pairs):
             GROUP BY 1, 2, 3
         """).fetchall()
         large_rows = duck.execute(f"""
-            WITH med AS (
-                SELECT market, asset_id, side, median(size) AS med_size
+            WITH bins AS (
+                SELECT market, asset_id,
+                       floor(ts_ms / 1000.0 / 300) * 300 AS bin_s,
+                       max(price) FILTER (WHERE side = 'BUY') AS best_bid,
+                       min(price) FILTER (WHERE side = 'SELL') AS best_ask
                 FROM hour_hits
+                GROUP BY 1, 2, 3
+            ),
+            mids AS (
+                SELECT market, asset_id, bin_s,
+                       CASE
+                           WHEN best_bid IS NOT NULL AND best_ask IS NOT NULL
+                               THEN (best_bid + best_ask) / 2
+                           ELSE coalesce(best_bid, best_ask)
+                       END AS mid
+                FROM bins
+            ),
+            near AS (
+                SELECT h.market, h.asset_id, h.side, h.ts_ms, h.price, h.size, h.focus
+                FROM hour_hits h
+                JOIN mids d
+                  ON h.market = d.market
+                 AND h.asset_id = d.asset_id
+                 AND floor(h.ts_ms / 1000.0 / 300) * 300 = d.bin_s
+                WHERE d.mid IS NOT NULL
+                  AND abs(h.price - d.mid) <= {NEAR_MID}
+            ),
+            med AS (
+                SELECT market, asset_id, side, median(size) AS med_size
+                FROM near
                 WHERE focus = 1
                 GROUP BY 1, 2, 3
                 HAVING count(*) >= 20
             )
-            SELECT h.ts_ms, h.market, h.asset_id, h.side, h.price, h.size, m.med_size
-            FROM hour_hits h
+            SELECT n.ts_ms, n.market, n.asset_id, n.side, n.price, n.size, m.med_size
+            FROM near n
             JOIN med m USING (market, asset_id, side)
-            WHERE h.focus = 1 AND h.size >= m.med_size * {LARGE_SIZE_MULT}
+            WHERE n.focus = 1
+              AND n.size >= m.med_size * {LARGE_SIZE_MULT}
         """).fetchall()
     except Exception as error:
         print(f"  skip {hour_key(moment)}: {error.__class__.__name__}", flush=True)
@@ -1244,11 +1290,53 @@ def prop_bucket(stat, edge):
     return "competitive"
 
 
+def zero_when_box_is_zero(path, final):
+    """Keep a finished zero on the chart instead of leaving the running stat blank.
+
+    No rebound plays means the running total never moves. If the box score is
+    also zero, the in-game value is 0, not the combined points of the game.
+    """
+    if path is None or path.empty or final is None or "stat_value" not in path:
+        return path
+    try:
+        finished = float(final)
+    except (TypeError, ValueError):
+        return path
+    if finished != 0 or path["stat_value"].notna().any():
+        return path
+    path = path.copy()
+    live = pd.to_numeric(path["hours_from_tip"], errors="coerce") >= 0
+    path.loc[live, "stat_value"] = 0
+    return path
+
+
+def stat_axis_label(code):
+    labels = {
+        "points": "Points",
+        "assists": "Assists",
+        "rebounds": "Rebounds",
+        "threes": "Threes made",
+        "steals": "Steals",
+        "blocks": "Blocks",
+    }
+    return labels.get(str(code or ""), "Player stat")
+
+
+def prop_stat_limit(line, stat, final):
+    """Right-axis top for a player stat. The game score is not part of this scale."""
+    candidates = [float(line or 0)]
+    if stat is not None and stat.notna().any():
+        candidates.append(float(stat.max()))
+    if final is not None:
+        candidates.append(float(final))
+    return max(max(candidates) + 2, 2)
+
+
 def attach_game_clock(path, plays):
     """Home score, away score, and their sum on each in-game bin.
 
-    A prop chart has no 'charted team', so the game total is what lines up
-    with the Over price when the player's own running stat is missing.
+    These columns stay in the CSV. The prop chart does not draw the sum:
+    a 200-point game would hide a 3.5 rebound line.
     """
     if path is None or path.empty or plays is None or plays.empty:
         path = path.copy() if path is not None else pd.DataFrame()
@@ -1359,6 +1447,9 @@ def classify_orders(orders, path, plays, tip):
         not_reaction = since_s.isna() | (since_s >= 15)
         frame["led_score"] = (not_reaction & until_s.notna() & (until_s <= 120)).fillna(False)
     frame["stands_out"] = frame["price_followed"] & frame["led_score"]
+    frame = drop_far_orders(frame)
+    if frame.empty:
+        return pd.DataFrame(columns=columns)
     return frame[columns]
 
 
@@ -1777,12 +1868,13 @@ def analyze_props(each, stats):
                 }
             )
         if not path.empty:
-            plot_path = path.copy()
+            plot_path = zero_when_box_is_zero(path, final).copy()
             plot_path["team"] = item["name"]
             plot_path["rank"] = item["rank"]
             plot_path["label"] = label
             plot_path["bucket"] = summary["game_bucket"]
             plot_path["final_stat"] = final
+            plot_path["stat"] = item["stat"]
             paths.append(plot_path)
         if not large_book.empty:
             mine_orders = large_book[
@@ -1863,7 +1955,7 @@ SHARED_COLUMN_DOCS = {
     ("*", "minutes_to_decided"): "Minutes after tip when the mid first reaches 0.90 or 0.10. Blank if that never happens in the saved window.",
     ("*", "bid_ask_pregame"): "Mean of ask minus bid over the hour before tip.",
     ("*", "bid_ask_live"): "Mean of ask minus bid over the first 2.5 hours after tip.",
-    ("*", "large_n"): "Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed.",
+    ("*", "large_n"): "Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed. The median and this count use only prints within 10 cents of the mid in that five-minute bin.",
     ("*", "followed_n"): "How many of those large sizes were followed by a mid move of at least 0.03 in the same direction over the next 30 minutes. A buy has to move the mid up. A sell has to move it down.",
     ("*", "led_score_n"): "How many large sizes both followed the price and arrived at least 15 seconds after the previous event and within 2 minutes before the next one.",
     ("*", "book_size"): "Sum of posted size (size greater than 0) for the charted token in the hour before tip, the tip hour, and the hour after. Posted size is the offer traffic in the book. It is not matched trade volume.",
@@ -1885,10 +1977,10 @@ SHARED_COLUMN_DOCS = {
     ("*", "title"): "Market title from the markets table.",
     ("*", "time"): "UTC time of the book update.",
     ("*", "side"): "BUY is a posted bid. SELL is a posted ask. This is a resting size, not a matched trade, and it has no wallet.",
-    ("*", "price"): "Price of that posted size, on the 0 to 1 contract scale.",
+    ("*", "price"): "Price of that posted size, on the 0 to 1 contract scale. A row more than 10 cents from the mid at that time is left out of large_orders.csv.",
     ("*", "size"): "Posted size. A size of 0 means the level was removed, and those rows are left out because a cancel and a fill look the same.",
-    ("*", "med_size"): "Median posted size on this token and side in that clock hour.",
-    ("*", "size_ratio"): "size divided by med_size. A row is kept when this is at least 10 and that side had at least 20 updates in the hour.",
+    ("*", "med_size"): "Median posted size on this token and side in that clock hour, using only prints within 10 cents of the mid.",
+    ("*", "size_ratio"): "size divided by med_size. A row is kept when this is at least 10, the price is within 10 cents of the mid, and that side had at least 20 such updates in the hour.",
     ("*", "mid_at"): "Latest 5-minute mid at or before this update.",
     ("*", "mid_later"): "Next 5-minute mid at least 30 minutes after this update.",
     ("*", "price_followed"): "True when mid_later is at least 0.03 further in the order's direction than mid_at.",
@@ -1933,12 +2025,12 @@ PROP_COLUMN_DOCS = {
     ("summary.csv", "final_stat"): "ESPN box-score total for this stat. Threes are made three-pointers.",
     ("summary.csv", "espn_margin"): "final_stat minus the posted number. Positive means the player finished over.",
     ("summary.csv", "game_bucket"): "For points, close means the absolute gap is 2 or less and blowout means 6 or more. For assists, rebounds, threes, steals, and blocks, close is 1 or less and blowout is 3 or more.",
-    ("price_paths.csv", "stat_value"): "Player's running stat from the ESPN play-by-play. After tip it stays 0 until the first recorded increase. Blank before tip, and blank for the whole game when the play text never names this player.",
+    ("price_paths.csv", "stat_value"): "Player's running stat from the ESPN play-by-play. After tip it stays 0 until the first recorded increase. A box score of 0 stays 0 for the whole game. Blank before tip, and blank for the whole game when the box score is positive but the play text never names this player.",
     ("price_paths.csv", "prop_line"): "Posted over/under number, repeated on every bin. Drawn as the dashed line.",
     ("price_paths.csv", "final_stat"): "ESPN box-score total, repeated on every bin. Drawn as the dotted line.",
     ("price_paths.csv", "home_score"): "Home team's score at this bin. Blank before tip.",
     ("price_paths.csv", "away_score"): "Away team's score at this bin. Blank before tip.",
-    ("price_paths.csv", "game_points"): "Home score plus away score. Drawn on price_vs_score.png when the player's running stat is missing.",
+    ("price_paths.csv", "game_points"): "Home score plus away score at this bin. This is the game total, often near 200, and it is not the player's stat. price_vs_score.png does not draw it.",
     ("price_paths.csv", "spread_mid"): "Mid of the next most traded line for the same player, stat, and game.",
     ("alternate_spreads.csv", "stat"): "Stat family of this line.",
     ("alternate_spreads.csv", "line"): "Posted over/under number.",
@@ -1985,7 +2077,7 @@ def write_data_dictionary(files):
     if "alternate_spreads.csv" not in present:
         missing.append("`alternate_spreads.csv` is absent because no extra line was found.")
     if "large_orders.csv" not in present:
-        missing.append("`large_orders.csv` is absent because no posted size was at least 10 times the median.")
+        missing.append("`large_orders.csv` is absent because no posted size within 10 cents of the mid was at least 10 times the median.")
     if missing:
         lines.append("## Files not written")
         lines.append("")
@@ -2030,7 +2122,7 @@ def finish_run(summaries, paths, alternates, results, order_frames, columns):
     plot_calibration(summary_frame)
     plot_spread(summary_frame)
     plot_large_orders(paths, orders)
-    plot_large_order_counts(summary_frame)
+    plot_large_order_counts(summary_frame, orders)
     show = [column for column in columns if column in summary_frame.columns]
     print(summary_frame[show].to_string(index=False))
     print(f"Wrote {OUTPUT}")
@@ -2042,7 +2134,12 @@ def panels_from_summary(summary):
         record = ""
         if "record" in summary.columns and pd.notna(row["record"]):
             record = str(row["record"])
-        panels.append({"rank": int(row["rank"]), "name": str(row["team"]), "record": record})
+        code = ""
+        if "stat" in summary.columns and pd.notna(row["stat"]):
+            code = str(row["stat"])
+        elif "code" in summary.columns and pd.notna(row["code"]):
+            code = str(row["code"])
+        panels.append({"rank": int(row["rank"]), "name": str(row["team"]), "record": record, "code": code})
     return panels
 
 
@@ -2081,7 +2178,7 @@ def redraw():
     orders_path = OUTPUT / "large_orders.csv"
     orders = pd.read_csv(orders_path) if orders_path.exists() else pd.DataFrame()
     plot_large_orders(paths, orders)
-    plot_large_order_counts(summary)
+    plot_large_order_counts(summary, orders)
     documented = []
     for name in ("summary.csv", "price_paths.csv", "alternate_spreads.csv", "game_results.csv", "large_orders.csv"):
         path = OUTPUT / name
@@ -2297,30 +2394,39 @@ def plot_price_vs_score(paths):
         if CHART_KIND == "prop":
             twin = axis.twinx()
             stat = pd.to_numeric(frame["stat_value"], errors="coerce") if "stat_value" in frame else pd.Series(dtype=float)
-            points = pd.to_numeric(frame["game_points"], errors="coerce") if "game_points" in frame else pd.Series(dtype=float)
             finals = pd.to_numeric(frame["final_stat"], errors="coerce") if "final_stat" in frame else pd.Series(dtype=float)
             posted = pd.to_numeric(frame["prop_line"], errors="coerce") if "prop_line" in frame else pd.Series(dtype=float)
             line = float(posted.dropna().iloc[0]) if posted.notna().any() else 0.0
             final = float(finals.dropna().iloc[0]) if finals.notna().any() else None
+            # A saved run can still have a blank running stat and a box score of 0.
+            # Draw that as 0. Do not substitute the combined game score.
+            if not stat.notna().any() and final == 0:
+                live = pd.to_numeric(frame["hours_from_tip"], errors="coerce") >= 0
+                stat = pd.Series(float("nan"), index=frame.index)
+                stat.loc[live] = 0.0
+            code = panel.get("code") or ""
+            if not code and "stat" in frame.columns and frame["stat"].notna().any():
+                code = str(frame["stat"].dropna().iloc[0])
+            right_label = stat_axis_label(code)
             if stat.notna().any():
                 twin.plot(frame["hours_from_tip"], stat, color="#b04a4a", linewidth=1.2)
-                series_top = float(stat.max())
-                right_label = "Player stat"
-            elif points.notna().any():
-                twin.plot(frame["hours_from_tip"], points, color="#b04a4a", linewidth=1.2)
-                series_top = float(points.max())
-                right_label = "Game points"
             else:
-                series_top = 0.0
-                right_label = "Player stat"
+                axis.text(
+                    0.98,
+                    0.08,
+                    "Running total not in the play-by-play",
+                    ha="right",
+                    va="bottom",
+                    fontsize=7,
+                    color="#666666",
+                    transform=axis.transAxes,
+                )
             if line:
                 twin.axhline(line, color="#b04a4a", linewidth=0.8, linestyle="--")
             if final is not None:
                 twin.axhline(final, color="#2f7d4a", linewidth=0.8, linestyle=":")
-            top = max(line, series_top, 0 if final is None else final) + 2
-            twin.set_ylim(0, max(top, 2))
-            if (index + 1) % cols == 0:
-                twin.set_ylabel(right_label)
+            twin.set_ylim(0, prop_stat_limit(line, stat, final))
+            twin.set_ylabel(right_label, fontsize=8)
         else:
             scores = frame["score_margin"].dropna() if "score_margin" in frame else pd.Series(dtype=float)
             if not scores.empty:
@@ -2419,17 +2525,55 @@ def plot_alternate_spreads(frame):
     finish_grid(fig, axes, count, cols, x_label, y_label, alt_title, "alternate_spreads.png")
 
 
+def flag_true(series):
+    return series.map(lambda value: value is True or str(value).strip().lower() in {"true", "1"})
+
+
+def counts_without_boundary(summary, orders):
+    """Bar-chart counts after prints more than 10 cents from the mid are removed.
+
+    A saved summary still has the old totals. The order rows are enough to
+    recount, so a redraw matches the scatter without reading the hourly files.
+    """
+    if summary is None or summary.empty or orders is None or orders.empty or "price" not in orders.columns:
+        return summary
+    if "rank" not in orders.columns or "rank" not in summary.columns:
+        return summary
+    frame = drop_far_orders(orders)
+    summary = summary.copy()
+    summary["rank"] = pd.to_numeric(summary["rank"], errors="coerce")
+    summary["large_n"] = 0
+    summary["followed_n"] = 0
+    summary["led_score_n"] = 0
+    if frame.empty:
+        return summary
+    frame = frame.copy()
+    frame["rank"] = pd.to_numeric(frame["rank"], errors="coerce")
+    frame["price_followed"] = flag_true(frame["price_followed"]) if "price_followed" in frame else False
+    frame["stands_out"] = flag_true(frame["stands_out"]) if "stands_out" in frame else False
+    counts = frame.groupby("rank", sort=False).agg(
+        large_n=("price", "size"),
+        followed_n=("price_followed", "sum"),
+        led_score_n=("stands_out", "sum"),
+    )
+    summary = summary.drop(columns=["large_n", "followed_n", "led_score_n"])
+    summary = summary.merge(counts, on="rank", how="left")
+    for column in ("large_n", "followed_n", "led_score_n"):
+        summary[column] = pd.to_numeric(summary[column], errors="coerce").fillna(0)
+    return summary
+
+
 def plot_large_orders(paths, orders):
     fig, axes, count, cols = grid_for()
     by_rank = paths_by_rank(paths)
     grouped = {}
     if orders is not None and not orders.empty:
-        orders = orders.copy()
+        orders = drop_far_orders(orders)
         for column in ("hours_from_tip", "price", "size_ratio"):
             if column in orders:
                 orders[column] = pd.to_numeric(orders[column], errors="coerce")
         if "stands_out" in orders:
-            orders["stands_out"] = orders["stands_out"].map(lambda value: str(value).strip().lower() in {"true", "1"} or value is True)
+            orders["stands_out"] = flag_true(orders["stands_out"])
         grouped = {int(rank): part for rank, part in orders.groupby("rank")}
     labeled = False
     legend_axis = None
@@ -2475,7 +2619,8 @@ def plot_large_orders(paths, orders):
     )
 
 
-def plot_large_order_counts(summary):
+def plot_large_order_counts(summary, orders=None):
+    summary = counts_without_boundary(summary, orders)
     columns = ["team", "large_n", "followed_n", "led_score_n"]
     if summary is None or summary.empty or not set(columns).issubset(summary.columns):
         fig, axis = plt.subplots(figsize=(8, 4))
@@ -2490,7 +2635,7 @@ def plot_large_order_counts(summary):
     frame = frame[frame["large_n"] > 0]
     fig, axis = plt.subplots(figsize=(max(10, 0.55 * max(len(frame), 1)), 5))
     if frame.empty:
-        axis.text(0.5, 0.5, "No order was at least 10 times the median size", ha="center")
+        axis.text(0.5, 0.5, "No order within 10 cents of the mid was at least 10 times the median size", ha="center")
     else:
         positions = list(range(len(frame)))
         width = 0.25

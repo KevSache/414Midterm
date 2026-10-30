@@ -42,7 +42,7 @@ One row per panel.
 | `balance` | Lower of this market's matched-volume percentile and its posted-size percentile among the markets that were eligible. Panels are sorted by this, highest first, so both numbers have to be high. Game winners are eligible at volume_clob of at least 1,000. Props are eligible at any matched volume above zero. |
 | `volume_clob` | Stored lifetime matched CLOB volume of this contract, in dollars. It is a snapshot from the markets table. Game-winner charts leave out markets under 1,000. Prop charts leave out markets at zero. |
 | `score_source` | ESPN event id, written as espn:<id>. |
-| `large_n` | Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed. |
+| `large_n` | Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed. The median and this count use only prints within 10 cents of the mid in that five-minute bin. |
 | `followed_n` | How many of those large sizes were followed by a mid move of at least 0.03 in the same direction over the next 30 minutes. A buy has to move the mid up. A sell has to move it down. |
 | `led_score_n` | How many large sizes both followed the price and arrived at least 15 seconds after the previous event and within 2 minutes before the next one. |
 | `note` | Why a row has no price path or no ESPN result. Blank when both were found. |
@@ -62,17 +62,18 @@ One row per five-minute bin of the token drawn on the panel.
 | `hours_from_tip` | Hours after the listed tip. Negative values are before tip. |
 | `variance_score` | Standard deviation of the mid over the trailing 30 minutes, which is 6 bins. Blank until 3 bins exist. |
 | `spread_width` | Best ask minus best bid in that bin. |
-| `stat_value` | Player's running stat from the ESPN play-by-play. After tip it stays 0 until the first recorded increase. Blank before tip, and blank for the whole game when the play text never names this player. |
+| `stat_value` | Player's running stat from the ESPN play-by-play. After tip it stays 0 until the first recorded increase. A box score of 0 stays 0 for the whole game. Blank before tip, and blank for the whole game when the box score is positive but the play text never names this player. |
 | `prop_line` | Posted over/under number, repeated on every bin. Drawn as the dashed line. |
 | `home_score` | Home team's score at this bin. Blank before tip. |
 | `away_score` | Away team's score at this bin. Blank before tip. |
-| `game_points` | Home score plus away score. Drawn on price_vs_score.png when the player's running stat is missing. |
+| `game_points` | Home score plus away score at this bin. This is the game total, often near 200, and it is not the player's stat. price_vs_score.png does not draw it. |
 | `spread_mid` | Mid of the next most traded line for the same player, stat, and game. |
 | `team` | Short panel label, such as Brunson 24.5 pts. |
 | `rank` | Panel number, starting at 1. The same number joins a row to the other CSVs. |
 | `label` | Title drawn on the panel. |
 | `bucket` | close, competitive, or blowout. The cutoffs are the same as game_bucket. |
 | `final_stat` | ESPN box-score total, repeated on every bin. Drawn as the dotted line. |
+| `stat` | Saved with this run. |
 
 ## `alternate_spreads.csv`
 
@@ -127,7 +128,7 @@ The summary rows for panels that had an order book. The columns match summary.cs
 | `balance` | Lower of this market's matched-volume percentile and its posted-size percentile among the markets that were eligible. Panels are sorted by this, highest first, so both numbers have to be high. Game winners are eligible at volume_clob of at least 1,000. Props are eligible at any matched volume above zero. |
 | `volume_clob` | Stored lifetime matched CLOB volume of this contract, in dollars. It is a snapshot from the markets table. Game-winner charts leave out markets under 1,000. Prop charts leave out markets at zero. |
 | `score_source` | ESPN event id, written as espn:<id>. |
-| `large_n` | Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed. |
+| `large_n` | Posted sizes at least 10 times the median size on that token and side in that hour, after repeats within 10 seconds are collapsed. The median and this count use only prints within 10 cents of the mid in that five-minute bin. |
 | `followed_n` | How many of those large sizes were followed by a mid move of at least 0.03 in the same direction over the next 30 minutes. A buy has to move the mid up. A sell has to move it down. |
 | `led_score_n` | How many large sizes both followed the price and arrived at least 15 seconds after the previous event and within 2 minutes before the next one. |
 | `note` | Why a row has no price path or no ESPN result. Blank when both were found. |
@@ -144,10 +145,10 @@ One row per unusually large posted size on the charted token. There is no wallet
 | `time` | UTC time of the book update. |
 | `hours_from_tip` | Hours after the listed tip. Negative values are before tip. |
 | `side` | BUY is a posted bid. SELL is a posted ask. This is a resting size, not a matched trade, and it has no wallet. |
-| `price` | Price of that posted size, on the 0 to 1 contract scale. |
+| `price` | Price of that posted size, on the 0 to 1 contract scale. A row more than 10 cents from the mid at that time is left out of large_orders.csv. |
 | `size` | Posted size. A size of 0 means the level was removed, and those rows are left out because a cancel and a fill look the same. |
-| `med_size` | Median posted size on this token and side in that clock hour. |
-| `size_ratio` | size divided by med_size. A row is kept when this is at least 10 and that side had at least 20 updates in the hour. |
+| `med_size` | Median posted size on this token and side in that clock hour, using only prints within 10 cents of the mid. |
+| `size_ratio` | size divided by med_size. A row is kept when this is at least 10, the price is within 10 cents of the mid, and that side had at least 20 such updates in the hour. |
 | `mid_at` | Latest 5-minute mid at or before this update. |
 | `mid_later` | Next 5-minute mid at least 30 minutes after this update. |
 | `price_followed` | True when mid_later is at least 0.03 further in the order's direction than mid_at. |
